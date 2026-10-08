@@ -1,0 +1,10 @@
+/cmake-build-*/
+/build/
+/build-review/
+
+/.idea/
+
+/INVENTORY_MANAGEMENT_PROJECT.md
+/PROJECT_MENTOR_GUIDE.md
+/tasks.md
+/req.md
