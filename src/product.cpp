@@ -14,20 +14,17 @@ Product::Product(std::string sku,
         || sku == "P000" || sku.substr(1).find_first_not_of("0123456789ABCDEF") != std::string::npos) {
         throw std::invalid_argument("Invalid SKU: expected P001 through PFFF using uppercase hexadecimal digits.");
     }
-    if (productName_.empty()) {
-        throw std::invalid_argument("product name cannot be empty.");
-    }
-    if (const auto firstNonWhitespace = productName_.find_first_not_of(" \t\n\r\f\v"); firstNonWhitespace == std::string::npos) {
-        throw std::invalid_argument("product name cannot be empty.");
+    if (!productNameValidator(productName_)) {
+        throw std::invalid_argument("Product name cannot be empty or whitespace-only.");
     }
     if (unitPrice_ < 0) {
-        throw std::invalid_argument("negative unit price not allowed.");
+        throw std::invalid_argument("Unit price cannot be negative.");
     }
     if (stockQuantity_ < 0) {
-        throw std::invalid_argument("negative stock quantity not allowed.");
+        throw std::invalid_argument("Stock quantity cannot be negative.");
     }
     if (reorderLevel_ < 0) {
-        throw std::invalid_argument("negative reorder level not allowed.");
+        throw std::invalid_argument("Reorder level cannot be negative.");
     }
 }
 
@@ -51,3 +48,34 @@ int Product::getReorderLevel() const {
     return reorderLevel_;
 }
 
+bool Product::productNameValidator(const std::string& name) {
+    return name.find_first_not_of(" \t\n\r\f\v") != std::string::npos;
+}
+
+void Product::setProductName(const std::string& productName) {
+    if (!productNameValidator(productName)) {
+        throw std::invalid_argument("Product name cannot be empty or whitespace-only.");
+    }
+    productName_ = productName;
+}
+
+void Product::setUnitPrice(const std::int64_t unitPrice) {
+    if (unitPrice < 0) {
+        throw std::invalid_argument("Unit price cannot be negative.");
+    }
+    unitPrice_ = unitPrice;
+}
+
+void Product::setStockQuantity(const int stockQuantity) {
+    if (stockQuantity < 0) {
+        throw std::invalid_argument("Stock quantity cannot be negative.");
+    }
+    stockQuantity_ = stockQuantity;
+}
+
+void Product::setReorderLevel(const int reorderLevel) {
+    if (reorderLevel < 0) {
+        throw std::invalid_argument("Reorder level cannot be negative.");
+    }
+    reorderLevel_ = reorderLevel;
+}

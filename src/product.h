@@ -10,13 +10,22 @@ private:
     std::int64_t unitPrice_;
     int stockQuantity_;
     int reorderLevel_;
+
+    static bool productNameValidator(const std::string& name);
+
 public:
     Product(std::string sku, std::string productName,std::int64_t unitPrice, int stockQuantity, int reorderLevel);
+
     std::string getSku() const;
     std::string getProductName() const;
     std::int64_t getUnitPrice() const;
     int getStockQuantity() const;
     int getReorderLevel() const;
+
+    void setProductName(const std::string& productName);
+    void setUnitPrice(std::int64_t unitPrice);
+    void setStockQuantity(int stockQuantity);
+    void setReorderLevel(int reorderLevel);
 };
 
 #endif //STORE_PRODUCT_H

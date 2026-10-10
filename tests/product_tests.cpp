@@ -46,6 +46,14 @@ std::string testConstructorNameContainingWhitespace(std::string sku,
     std::int64_t unitPrice,
     int stockQuantity,
     int reorderLevel);
+std::string testSetProductNameValid(const std::string& newName);
+std::string testSetProductNameInvalid(const std::string& invalidName);
+std::string testSetUnitPriceValid(std::int64_t newPrice);
+std::string testSetUnitPriceNegative();
+std::string testSetStockQuantityValid(int newQuantity);
+std::string testSetStockQuantityNegative();
+std::string testSetReorderLevelValid(int newLevel);
+std::string testSetReorderLevelNegative();
 
 int main(int argc, char* argv[])
 {
@@ -111,6 +119,48 @@ int main(int argc, char* argv[])
     }
     else if (testName == "sku_maximum") {
         errors = testConstructorMatchingValues("PFFF", "biscuit", 20000, 23, 5);
+    }
+    else if (testName == "set_name_valid") {
+        errors = testSetProductNameValid("Chocolate Cake");
+    }
+    else if (testName == "set_name_with_spaces") {
+        errors = testSetProductNameValid("Chocolate Cake With Cream");
+    }
+    else if (testName == "set_name_empty") {
+        errors = testSetProductNameInvalid("");
+    }
+    else if (testName == "set_name_whitespace") {
+        errors = testSetProductNameInvalid("   \t");
+    }
+    else if (testName == "set_price_positive") {
+        errors = testSetUnitPriceValid(2500);
+    }
+    else if (testName == "set_price_zero") {
+        errors = testSetUnitPriceValid(0);
+    }
+    else if (testName == "set_price_large") {
+        errors = testSetUnitPriceValid(5'000'000'000LL);
+    }
+    else if (testName == "set_price_negative") {
+        errors = testSetUnitPriceNegative();
+    }
+    else if (testName == "set_stock_positive") {
+        errors = testSetStockQuantityValid(25);
+    }
+    else if (testName == "set_stock_zero") {
+        errors = testSetStockQuantityValid(0);
+    }
+    else if (testName == "set_stock_negative") {
+        errors = testSetStockQuantityNegative();
+    }
+    else if (testName == "set_reorder_positive") {
+        errors = testSetReorderLevelValid(12);
+    }
+    else if (testName == "set_reorder_zero") {
+        errors = testSetReorderLevelValid(0);
+    }
+    else if (testName == "set_reorder_negative") {
+        errors = testSetReorderLevelNegative();
     }
     else {
         std::cerr << "Unknown test name: " << testName << "\n";
@@ -300,4 +350,116 @@ std::string testConstructorNameContainingWhitespace(std::string sku,
         errors += "Constructor rejected a valid name containing spaces.";
         return errors;
     }
+}
+
+std::string testSetProductNameValid(const std::string& newName)
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+    product.setProductName(newName);
+
+    if (product.getProductName() != newName) {
+        return "Product name was not updated.\n";
+    }
+    return {};
+}
+
+std::string testSetProductNameInvalid(const std::string& invalidName)
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+
+    try {
+        product.setProductName(invalidName);
+    }
+    catch (const std::invalid_argument&) {
+        if (product.getProductName() != "Cake") {
+            return "Product name changed after a rejected update.\n";
+        }
+        return {};
+    }
+
+    return "Expected std::invalid_argument for an invalid product name.\n";
+}
+
+std::string testSetUnitPriceValid(const std::int64_t newPrice)
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+    product.setUnitPrice(newPrice);
+
+    if (product.getUnitPrice() != newPrice) {
+        return "Unit price was not updated.\n";
+    }
+    return {};
+}
+
+std::string testSetUnitPriceNegative()
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+
+    try {
+        product.setUnitPrice(-1);
+    }
+    catch (const std::invalid_argument&) {
+        if (product.getUnitPrice() != 1000) {
+            return "Unit price changed after a rejected update.\n";
+        }
+        return {};
+    }
+
+    return "Expected std::invalid_argument for a negative unit price.\n";
+}
+
+std::string testSetStockQuantityValid(const int newQuantity)
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+    product.setStockQuantity(newQuantity);
+
+    if (product.getStockQuantity() != newQuantity) {
+        return "Stock quantity was not updated.\n";
+    }
+    return {};
+}
+
+std::string testSetStockQuantityNegative()
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+
+    try {
+        product.setStockQuantity(-1);
+    }
+    catch (const std::invalid_argument&) {
+        if (product.getStockQuantity() != 10) {
+            return "Stock quantity changed after a rejected update.\n";
+        }
+        return {};
+    }
+
+    return "Expected std::invalid_argument for a negative stock quantity.\n";
+}
+
+std::string testSetReorderLevelValid(const int newLevel)
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+    product.setReorderLevel(newLevel);
+
+    if (product.getReorderLevel() != newLevel) {
+        return "Reorder level was not updated.\n";
+    }
+    return {};
+}
+
+std::string testSetReorderLevelNegative()
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+
+    try {
+        product.setReorderLevel(-1);
+    }
+    catch (const std::invalid_argument&) {
+        if (product.getReorderLevel() != 5) {
+            return "Reorder level changed after a rejected update.\n";
+        }
+        return {};
+    }
+
+    return "Expected std::invalid_argument for a negative reorder level.\n";
 }
