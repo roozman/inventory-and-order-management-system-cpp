@@ -15,6 +15,8 @@ enum class MenuOptions {
 void showMenu();
 void menuAddProduct(std::vector<Product>& prodList);
 void menuListProducts(const std::vector<Product>& prodList);
+bool readInt64(const std::string& prompt, std::int64_t& value);
+bool readInt(const std::string& prompt, int& value);
 
 int main() {
     std::vector<Product> productsList;
@@ -68,8 +70,60 @@ void showMenu() {
     << "Inventory and Order Management System\n"
     << std::string(40, '=') << '\n'
     << "1. Add product\n"
-    << "2. List product\n"
+    << "2. List products\n"
     << "3. Exit\n\n";
+}
+
+bool readInt64(const std::string& prompt, std::int64_t& value)
+{
+    std::string input;
+
+    while (true) {
+        std::cout << prompt;
+
+        if (!std::getline(std::cin, input)) {
+            return false;
+        }
+
+        std::istringstream stream(input);
+        std::int64_t parsedValue{};
+
+        if (stream >> parsedValue) {
+            stream >> std::ws;
+
+            if (stream.eof()) {
+                value = parsedValue;
+                return true;
+            }
+        }
+
+        std::cout << "Invalid input. Please enter an integer.\n";
+    }
+}
+
+bool readInt(const std::string &prompt, int &value) {
+    std::string input;
+
+    while (true) {
+        std::cout << prompt;
+        if (!std::getline(std::cin, input)) {
+            return false;
+        }
+
+        std::istringstream stream(input);
+        int parsedValue{};
+
+        if (stream >> parsedValue) {
+            stream >> std::ws;
+
+            if (stream.eof()) {
+                value = parsedValue;
+                return true;
+            }
+        }
+
+        std::cout << "Invalid input. Please enter an integer.\n";
+    }
 }
 
 void menuAddProduct(std::vector<Product> &prodList) {
@@ -79,81 +133,42 @@ void menuAddProduct(std::vector<Product> &prodList) {
     int reorderLevel{0};
 
     std::cout << "Enter product name: ";
-        if (!getline(std::cin, productName)) {
-            std::cerr << "Product creation cancelled: input unavailable.\n";
-            return;
-        }
+    if (!getline(std::cin, productName)) {
+        std::cerr << "Product creation cancelled: input unavailable.\n";
+        return;
+    }
 
-        std::cout << "Enter price: ";
-        std::string input;
-        while (true) {
-            if (!getline(std::cin, input)) {
-                std::cerr << "Product creation cancelled: input unavailable.\n";
-                return;
-            }
+    if (!readInt64("Enter price: ", unitPrice)) {
+        std::cerr << "Product creation cancelled: input unavailable.\n";
+        return;
+    }
+    if (!readInt("Enter quantity: ", stockQuantity)) {
+        std::cerr << "Product creation cancelled: input unavailable.\n";
+        return;
+    }
+    if (!readInt("Enter reorder level: ", reorderLevel)) {
+        std::cerr << "Product creation cancelled: input unavailable.\n";
+        return;
+    }
 
-            if (std::istringstream iss(input); iss >> unitPrice) {
-                iss >> std::ws;
+    try {
+        const auto nextID = findNextID(prodList);
+        const std::string sku = generateSKU(nextID);
 
-                if (iss.eof()) {
-                    break;
-                }
-            }
-            std::cout << "invalid entry, expecting an integer! Please enter the price again:\n";
-        }
+        Product newProduct(sku, productName, unitPrice,
+                           stockQuantity, reorderLevel);
 
-        std::cout << "Enter quantity: ";
-        while (true) {
-            if (!getline(std::cin, input)) {
-                std::cerr << "Product creation cancelled: input unavailable.\n";
-                return;
-            }
-
-            if (std::istringstream iss(input); iss >> stockQuantity) {
-                iss >> std::ws;
-
-                if (iss.eof()) {
-                    break;
-                }
-            }
-            std::cout << "invalid entry, expecting an integer! Please enter the stock quantity again:\n";
-        }
-
-        std::cout << "Enter reorder level: ";
-        while (true) {
-            if (!getline(std::cin, input)) {
-                std::cerr << "Product creation cancelled: input unavailable.\n";
-                return;
-            }
-
-            if (std::istringstream iss(input); iss >> reorderLevel) {
-                iss >> std::ws;
-
-                if (iss.eof()) {
-                    break;
-                }
-            }
-            std::cout << "invalid entry, expecting an integer! Please enter the reorder level again:\n";
-        }
-
-        try {
-            const auto nextID = findNextID(prodList);
-            const std::string sku = generateSKU(nextID);
-
-            Product newProduct(sku, productName, unitPrice,
-                               stockQuantity, reorderLevel);
-
-            addProduct(prodList, newProduct);
-            std::cout << "Product " << productName
-              << " with SKU: " << sku
-              << " was added successfully.\n";
-        }
-        catch (const std::invalid_argument& e) {
-            std::cerr << "Cannot add product: " << e.what() << '\n';
-        }
-        catch (const std::out_of_range& e) {
-            std::cerr << "Cannot generate SKU: " << e.what() << '\n';
-        }
+        addProduct(prodList, newProduct);
+        std::cout << "Product " << productName
+          << " with SKU: " << sku
+          << " was added successfully.\n";
+    }
+    catch (const std::invalid_argument& e) {
+        std::cerr << "Cannot add product: " << e.what() << '\n';
+    }
+    catch (const std::out_of_range& e) {
+        std::cerr << "Cannot generate SKU: " << e.what() << '\n';
+    }
 }
 
 void menuListProducts(const std::vector<Product> &prodList) {
