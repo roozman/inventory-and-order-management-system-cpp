@@ -60,6 +60,10 @@ std::string testDecreaseStockValid(int initialStock, int amount, int expectedSto
 std::string testDecreaseStockInvalidArgument(int amount);
 std::string testDecreaseStockOutOfRange();
 std::string testLowStockStatus(int stockQuantity, int reorderLevel, bool expected);
+std::string testNewProductIsActive();
+std::string testArchiveProduct();
+std::string testArchiveProductTwice();
+std::string testArchivedProductRejectsModification(const std::string& operation);
 
 int main(int argc, char* argv[])
 {
@@ -201,6 +205,30 @@ int main(int argc, char* argv[])
     }
     else if (testName == "low_stock_zero_threshold") {
         errors = testLowStockStatus(0, 0, true);
+    }
+    else if (testName == "archive_new_product_active") {
+        errors = testNewProductIsActive();
+    }
+    else if (testName == "archive_changes_state") {
+        errors = testArchiveProduct();
+    }
+    else if (testName == "archive_reject_repeated") {
+        errors = testArchiveProductTwice();
+    }
+    else if (testName == "archive_reject_name_edit") {
+        errors = testArchivedProductRejectsModification("name");
+    }
+    else if (testName == "archive_reject_price_edit") {
+        errors = testArchivedProductRejectsModification("price");
+    }
+    else if (testName == "archive_reject_reorder_edit") {
+        errors = testArchivedProductRejectsModification("reorder");
+    }
+    else if (testName == "archive_reject_stock_increase") {
+        errors = testArchivedProductRejectsModification("increase");
+    }
+    else if (testName == "archive_reject_stock_decrease") {
+        errors = testArchivedProductRejectsModification("decrease");
     }
     else {
         std::cerr << "Unknown test name: " << testName << "\n";
@@ -597,4 +625,88 @@ std::string testLowStockStatus(const int stockQuantity, const int reorderLevel,
         return "Low-stock status did not match the stock and reorder level.\n";
     }
     return {};
+}
+
+std::string testNewProductIsActive()
+{
+    const Product product("P001", "Cake", 1000, 10, 5);
+
+    if (product.isArchived()) {
+        return "A newly constructed product was archived.\n";
+    }
+    return {};
+}
+
+std::string testArchiveProduct()
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+    product.archive();
+
+    if (!product.isArchived()) {
+        return "Archiving did not change the product state.\n";
+    }
+    return {};
+}
+
+std::string testArchiveProductTwice()
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+    product.archive();
+
+    try {
+        product.archive();
+    }
+    catch (const std::logic_error&) {
+        if (!product.isArchived()) {
+            return "A rejected repeated archive changed the product state.\n";
+        }
+        return {};
+    }
+    catch (const std::exception& error) {
+        return "Unexpected exception for repeated archiving: "
+            + std::string{error.what()} + "\n";
+    }
+
+    return "Repeated archiving did not throw std::logic_error.\n";
+}
+
+std::string testArchivedProductRejectsModification(const std::string& operation)
+{
+    Product product("P001", "Cake", 1000, 10, 5);
+    product.archive();
+
+    try {
+        if (operation == "name") {
+            product.setProductName("New Cake");
+        }
+        else if (operation == "price") {
+            product.setUnitPrice(2000);
+        }
+        else if (operation == "reorder") {
+            product.setReorderLevel(7);
+        }
+        else if (operation == "increase") {
+            product.increaseStock(1);
+        }
+        else if (operation == "decrease") {
+            product.decreaseStock(1);
+        }
+        else {
+            return "Unknown archived-product operation in test.\n";
+        }
+    }
+    catch (const std::logic_error&) {
+        if (product.getProductName() != "Cake" || product.getUnitPrice() != 1000
+            || product.getStockQuantity() != 10 || product.getReorderLevel() != 5
+            || !product.isArchived()) {
+            return "A rejected archived-product modification changed the product.\n";
+        }
+        return {};
+    }
+    catch (const std::exception& error) {
+        return "Unexpected exception for archived-product modification: "
+            + std::string{error.what()} + "\n";
+    }
+
+    return "An archived product accepted a modification.\n";
 }

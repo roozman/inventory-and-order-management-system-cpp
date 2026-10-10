@@ -10,7 +10,7 @@ Product::Product(std::string sku,
                  const int stockQuantity,
                  const int reorderLevel
 )
-    : sku_{sku}, productName_{productName}, unitPrice_{unitPrice}, stockQuantity_{stockQuantity}, reorderLevel_{reorderLevel} {
+    : sku_{sku}, productName_{productName}, unitPrice_{unitPrice}, stockQuantity_{stockQuantity}, reorderLevel_{reorderLevel}, archived_{false} {
     if (sku.size() != 4 || sku[0] != 'P'
         || sku == "P000" || sku.substr(1).find_first_not_of("0123456789ABCDEF") != std::string::npos) {
         throw std::invalid_argument("Invalid SKU: expected P001 through PFFF using uppercase hexadecimal digits.");
@@ -54,6 +54,7 @@ bool Product::productNameValidator(const std::string& name) {
 }
 
 void Product::setProductName(const std::string& productName) {
+    ensureActive();
     if (!productNameValidator(productName)) {
         throw std::invalid_argument("Product name cannot be empty or whitespace-only.");
     }
@@ -61,6 +62,7 @@ void Product::setProductName(const std::string& productName) {
 }
 
 void Product::setUnitPrice(const std::int64_t unitPrice) {
+    ensureActive();
     if (unitPrice < 0) {
         throw std::invalid_argument("Unit price cannot be negative.");
     }
@@ -68,6 +70,7 @@ void Product::setUnitPrice(const std::int64_t unitPrice) {
 }
 
 void Product::setReorderLevel(const int reorderLevel) {
+    ensureActive();
     if (reorderLevel < 0) {
         throw std::invalid_argument("Reorder level cannot be negative.");
     }
@@ -75,6 +78,7 @@ void Product::setReorderLevel(const int reorderLevel) {
 }
 
 void Product::increaseStock(const int amount) {
+    ensureActive();
     if (amount < 1) {
         throw std::invalid_argument("Stock increase must be a positive integer.");
     }
@@ -85,6 +89,7 @@ void Product::increaseStock(const int amount) {
 }
 
 void Product::decreaseStock(const int amount) {
+    ensureActive();
     if (amount < 1) {
         throw std::invalid_argument("Stock decrease must be a positive integer.");
     }
@@ -96,4 +101,24 @@ void Product::decreaseStock(const int amount) {
 
 bool Product::isLowStock() const {
     return stockQuantity_ <= reorderLevel_;
+}
+
+bool Product::isArchived() const {
+    return archived_;
+}
+
+void Product::archive() {
+    if (archived_) {
+        throw std::logic_error("Product is already archived.");
+    }
+
+    archived_ = true;
+}
+
+void Product::ensureActive() const {
+    if (archived_) {
+        throw std::logic_error(
+            "Archived products cannot be modified."
+        );
+    }
 }

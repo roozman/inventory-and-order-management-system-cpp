@@ -10,8 +10,10 @@ private:
     std::int64_t unitPrice_;
     int stockQuantity_;
     int reorderLevel_;
+    bool archived_;
 
     static bool productNameValidator(const std::string& name);
+    void ensureActive() const;
 
 public:
     Product(std::string sku, std::string productName,std::int64_t unitPrice, int stockQuantity, int reorderLevel);
@@ -28,6 +30,8 @@ public:
     void increaseStock(int amount);
     void decreaseStock(int amount);
     bool isLowStock() const;
+    bool isArchived() const;
+    void archive();
 };
 
 #endif //STORE_PRODUCT_H

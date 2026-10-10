@@ -23,6 +23,10 @@ std::string low_stock_no_matches();
 std::string low_stock_one_match();
 std::string low_stock_mixed_inventory();
 std::string low_stock_zero_threshold();
+std::string archived_product_remains_findable();
+std::string archived_sku_remains_reserved();
+std::string archived_product_excluded_from_low_stock();
+std::string archiving_one_product_does_not_affect_another();
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -86,6 +90,18 @@ int main(int argc, char* argv[]) {
     }
     else if (testName == "low_stock_zero_threshold") {
         errors = low_stock_zero_threshold();
+    }
+    else if (testName == "archived_product_remains_findable") {
+        errors = archived_product_remains_findable();
+    }
+    else if (testName == "archived_sku_remains_reserved") {
+        errors = archived_sku_remains_reserved();
+    }
+    else if (testName == "archived_product_excluded_from_low_stock") {
+        errors = archived_product_excluded_from_low_stock();
+    }
+    else if (testName == "archiving_one_product_does_not_affect_another") {
+        errors = archiving_one_product_does_not_affect_another();
     }
     else {
         std::cerr << "Unknown test name: " << testName << "\n";
@@ -383,6 +399,73 @@ std::string low_stock_zero_threshold()
 
     if (result.size() != 1 || result.front() != &products.at(0)) {
         return "Zero stock with a zero reorder level was not reported as low stock.\n";
+    }
+    return {};
+}
+
+std::string archived_product_remains_findable()
+{
+    std::vector<Product> products{
+        Product("P001", "Cake", 1000, 2, 3)
+    };
+    products.at(0).archive();
+
+    const Product* found = getProductBySKU(products, "P001");
+    if (found == nullptr || found != &products.at(0) || !found->isArchived()) {
+        return "General SKU lookup did not return the archived product.\n";
+    }
+    return {};
+}
+
+std::string archived_sku_remains_reserved()
+{
+    std::vector<Product> products{
+        Product("P001", "Cake", 1000, 2, 3)
+    };
+    products.at(0).archive();
+
+    try {
+        addProduct(products, Product("P001", "Replacement", 2000, 5, 1));
+    }
+    catch (const std::invalid_argument&) {
+        if (products.size() != 1 || !products.at(0).isArchived()) {
+            return "Rejecting reuse of an archived SKU changed the inventory.\n";
+        }
+        return {};
+    }
+    catch (const std::exception& error) {
+        return "Unexpected exception for reuse of an archived SKU: "
+            + std::string{error.what()} + "\n";
+    }
+
+    return "An archived SKU was reused for a new product.\n";
+}
+
+std::string archived_product_excluded_from_low_stock()
+{
+    std::vector<Product> products{
+        Product("P001", "Archived Cake", 1000, 2, 3),
+        Product("P002", "Active Biscuit", 2000, 1, 3)
+    };
+    products.at(0).archive();
+
+    const auto result = getLowStockProducts(products);
+    if (result.size() != 1 || result.front() != &products.at(1)) {
+        return "The low-stock report did not exclude the archived product.\n";
+    }
+    return {};
+}
+
+std::string archiving_one_product_does_not_affect_another()
+{
+    std::vector<Product> products{
+        Product("P001", "Cake", 1000, 2, 3),
+        Product("P002", "Biscuit", 2000, 5, 1)
+    };
+    products.at(0).archive();
+
+    if (!products.at(0).isArchived() || products.at(1).isArchived()) {
+        return "Archiving one product affected another product's state.\n";
     }
     return {};
 }

@@ -20,7 +20,8 @@ enum class ProductOperationsMenuOptions {
     EditProductReorderLevel = 3,
     IncreaseStock = 4,
     DecreaseStock = 5,
-    ReturnToMainMenu = 6
+    ArchiveProduct = 6,
+    ReturnToMainMenu = 7
 };
 
 void showMenu();
@@ -34,6 +35,7 @@ void menuEditProductReorderLevel(Product& prodToEdit);
 void menuIncreaseProductStock(Product& prodToEdit);
 void menuDecreaseProductStock(Product& prodToEdit);
 void displayLowStockProducts(const std::vector<const Product*>& lowStockProds);
+void menuArchiveProduct(Product& prodToEdit);
 
 bool readInt64(const std::string& prompt, std::int64_t& value);
 bool readInt(const std::string& prompt, int& value);
@@ -125,6 +127,11 @@ void showProductOperationsMenu(std::vector<Product> &prodList) {
         return;
     }
 
+    if (prodToEdit->isArchived()) {
+        std::cout << "Product " << sku << " is archived and cannot be modified.\n";
+        return;
+    }
+
     while (true) {
         std::cout
             <<  std::string(30, '-') << '\n'
@@ -135,7 +142,8 @@ void showProductOperationsMenu(std::vector<Product> &prodList) {
             << "3. Edit product reorder level\n"
             << "4. Increase stock\n"
             << "5. Decrease stock\n"
-            << "6. Return to main menu\n";
+            << "6. Archive product\n"
+            << "7. Return to main menu\n";
 
         int choice = readMenuOption();
 
@@ -155,6 +163,9 @@ void showProductOperationsMenu(std::vector<Product> &prodList) {
             case ProductOperationsMenuOptions::DecreaseStock:
                 menuDecreaseProductStock(*prodToEdit);
                 break;
+            case ProductOperationsMenuOptions::ArchiveProduct:
+                menuArchiveProduct(*prodToEdit);
+                return;
             case ProductOperationsMenuOptions::ReturnToMainMenu:
                 return;
             default:
@@ -278,9 +289,10 @@ void menuListProducts(const std::vector<Product> &prodList) {
               << std::setw(15) << "Unit Price"
               << std::setw(12) << "Stock"
               << std::setw(17) << "Reorder Level"
-              << "Status\n";
+              << std::setw(15) << "Stock Status"
+              << "Availability\n";
 
-    std::cout << std::string(90, '-') << '\n';
+    std::cout << std::string(105, '-') << '\n';
     for (const auto& product : prodList) {
         std::cout << std::left
                   << std::setw(8)  << product.getSku()
@@ -288,10 +300,12 @@ void menuListProducts(const std::vector<Product> &prodList) {
                   << std::setw(15) << product.getUnitPrice()
                   << std::setw(12) << product.getStockQuantity()
                   << std::setw(17) << product.getReorderLevel()
+                  << std::setw(15)
                   << (product.isLowStock() ? "Low stock" : "In stock")
+                  << (product.isArchived() ? "Archived" : "Active")
                   << '\n';
     }
-    std::cout << std::string(90, '-') << "\n\n";
+    std::cout << std::string(105, '-') << "\n\n";
 }
 
 void menuEditProductName(Product &prodToEdit) {
@@ -412,5 +426,15 @@ void displayLowStockProducts(const std::vector<const Product *>& lowStockProds) 
             << " | Reorder level: "
             << product->getReorderLevel()
             << '\n';
+    }
+}
+
+void menuArchiveProduct(Product &prodToEdit) {
+    try {
+        prodToEdit.archive();
+        std::cout << "Product " << prodToEdit.getSku() << " archived successfully.\n";
+    }
+    catch (const std::logic_error& error) {
+        std::cerr << "Failed to archive product: " << error.what() << '\n';
     }
 }

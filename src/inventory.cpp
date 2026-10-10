@@ -64,7 +64,7 @@ std::uint32_t findNextID(const std::vector<Product>& products) {
 std::vector<const Product*> getLowStockProducts(const std::vector<Product>& products) {
     std::vector<const Product*> lowStockProducts;
     for (const Product& product : products) {
-        if (product.isLowStock()) {
+        if (product.isLowStock() && !product.isArchived()) {
             lowStockProducts.push_back(&product);
         }
     }
