@@ -2,6 +2,7 @@
 #include <string>
 #include <cstdint>
 #include <stdexcept>
+#include <limits>
 
 Product::Product(std::string sku,
                  std::string productName,
@@ -66,16 +67,29 @@ void Product::setUnitPrice(const std::int64_t unitPrice) {
     unitPrice_ = unitPrice;
 }
 
-void Product::setStockQuantity(const int stockQuantity) {
-    if (stockQuantity < 0) {
-        throw std::invalid_argument("Stock quantity cannot be negative.");
-    }
-    stockQuantity_ = stockQuantity;
-}
-
 void Product::setReorderLevel(const int reorderLevel) {
     if (reorderLevel < 0) {
         throw std::invalid_argument("Reorder level cannot be negative.");
     }
     reorderLevel_ = reorderLevel;
+}
+
+void Product::increaseStock(const int amount) {
+    if (amount < 1) {
+        throw std::invalid_argument("Stock increase must be a positive integer.");
+    }
+    if (amount > std::numeric_limits<int>::max() - stockQuantity_) {
+        throw std::overflow_error("Stock quantity overflow.");
+    }
+    stockQuantity_ += amount;
+}
+
+void Product::decreaseStock(const int amount) {
+    if (amount < 1) {
+        throw std::invalid_argument("Stock decrease must be a positive integer.");
+    }
+    if (amount > stockQuantity_) {
+        throw std::out_of_range("Cannot decrease stock by an amount larger than the current inventory.");
+    }
+    stockQuantity_ -= amount;
 }

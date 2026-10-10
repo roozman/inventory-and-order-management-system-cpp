@@ -24,8 +24,9 @@ public:
 
     void setProductName(const std::string& productName);
     void setUnitPrice(std::int64_t unitPrice);
-    void setStockQuantity(int stockQuantity);
     void setReorderLevel(int reorderLevel);
+    void increaseStock(int amount);
+    void decreaseStock(int amount);
 };
 
 #endif //STORE_PRODUCT_H

@@ -9,27 +9,29 @@
 enum class MainMenuOptions {
     AddProduct = 1,
     ListProducts = 2,
-    OpenEditMenu = 3,
+    OpenProductOperations = 3,
     Exit = 4
 };
 
-enum class EditMenuOptions {
+enum class ProductOperationsMenuOptions {
     EditProductName = 1,
     EditProductUnitPrice = 2,
-    EditProductStockQuantity = 3,
-    EditProductReorderLevel = 4,
-    Exit = 5
+    EditProductReorderLevel = 3,
+    IncreaseStock = 4,
+    DecreaseStock = 5,
+    ReturnToMainMenu = 6
 };
 
 void showMenu();
-void showEditMenu(std::vector<Product>& prodList);
+void showProductOperationsMenu(std::vector<Product>& prodList);
 void menuAddProduct(std::vector<Product>& prodList);
 void menuListProducts(const std::vector<Product>& prodList);
 
 void menuEditProductName(Product& prodToEdit);
 void menuEditProductUnitPrice(Product& prodToEdit);
-void menuEditProductStockQuantity(Product& prodToEdit);
 void menuEditProductReorderLevel(Product& prodToEdit);
+void menuIncreaseProductStock(Product& prodToEdit);
+void menuDecreaseProductStock(Product& prodToEdit);
 
 bool readInt64(const std::string& prompt, std::int64_t& value);
 bool readInt(const std::string& prompt, int& value);
@@ -49,8 +51,8 @@ int main() {
             case MainMenuOptions::ListProducts:
                 menuListProducts(productsList);
                 break;
-            case MainMenuOptions::OpenEditMenu:
-                showEditMenu(productsList);
+            case MainMenuOptions::OpenProductOperations:
+                showProductOperationsMenu(productsList);
                 break;
             case MainMenuOptions::Exit:
                 return 0;
@@ -97,11 +99,11 @@ void showMenu() {
     << std::string(40, '=') << '\n'
     << "1. Add product\n"
     << "2. List products\n"
-    << "3. Edit a product\n"
+    << "3. Product operations\n"
     << "4. Exit\n";
 }
 
-void showEditMenu(std::vector<Product> &prodList) {
+void showProductOperationsMenu(std::vector<Product> &prodList) {
     std::string sku;
     std::cout << "Enter the SKU of the product to edit: ";
     if (!getline(std::cin, sku)) {
@@ -118,36 +120,40 @@ void showEditMenu(std::vector<Product> &prodList) {
     while (true) {
         std::cout
             <<  std::string(30, '-') << '\n'
-            << "Product Edit Menu\n"
+            << "Product Operations\n"
             << std::string(30, '-') << '\n'
             << "1. Edit product name\n"
             << "2. Edit product unit price\n"
-            << "3. Edit product stock quantity\n"
-            << "4. Edit product reorder level\n"
-            << "5. Return to main menu\n";
+            << "3. Edit product reorder level\n"
+            << "4. Increase stock\n"
+            << "5. Decrease stock\n"
+            << "6. Return to main menu\n";
 
         int choice = readMenuOption();
 
-        switch (static_cast<EditMenuOptions>(choice)) {
-            case EditMenuOptions::EditProductName:
+        switch (static_cast<ProductOperationsMenuOptions>(choice)) {
+            case ProductOperationsMenuOptions::EditProductName:
                 menuEditProductName(*prodToEdit);
                 break;
-            case EditMenuOptions::EditProductUnitPrice:
+            case ProductOperationsMenuOptions::EditProductUnitPrice:
                 menuEditProductUnitPrice(*prodToEdit);
                 break;
-            case EditMenuOptions::EditProductStockQuantity:
-                menuEditProductStockQuantity(*prodToEdit);
-                break;
-            case EditMenuOptions::EditProductReorderLevel:
+            case ProductOperationsMenuOptions::EditProductReorderLevel:
                 menuEditProductReorderLevel(*prodToEdit);
                 break;
-            case EditMenuOptions::Exit:
+            case ProductOperationsMenuOptions::IncreaseStock:
+                menuIncreaseProductStock(*prodToEdit);
+                break;
+            case ProductOperationsMenuOptions::DecreaseStock:
+                menuDecreaseProductStock(*prodToEdit);
+                break;
+            case ProductOperationsMenuOptions::ReturnToMainMenu:
                 return;
             default:
                 std::cout << "Invalid option.\n";
                 break;
         }
-        std::cout << "\nPress Enter to return to the edit menu...";
+        std::cout << "\nPress Enter to return to the product operations menu...";
 
         if (std::string input; !std::getline(std::cin, input)) {
             break;
@@ -322,24 +328,6 @@ void menuEditProductUnitPrice(Product &prodToEdit) {
 
 }
 
-void menuEditProductStockQuantity(Product &prodToEdit) {
-    int stockQuantity;
-
-    if (!readInt("Enter the new stock quantity: ", stockQuantity)) {
-        std::cerr << "Product edit cancelled: input unavailable.\n";
-        return;
-    }
-    try {
-        prodToEdit.setStockQuantity(stockQuantity);
-        std::cout << "Changed the stock quantity of product " << prodToEdit.getSku()
-                  << " to " << prodToEdit.getStockQuantity() << ".\n";
-    }
-    catch (const std::invalid_argument& e) {
-        std::cerr << "Cannot edit stock quantity: " << e.what() << '\n';
-    }
-
-}
-
 void menuEditProductReorderLevel(Product &prodToEdit) {
     int reorderLevel;
 
@@ -356,4 +344,44 @@ void menuEditProductReorderLevel(Product &prodToEdit) {
         std::cerr << "Cannot edit reorder level: " << e.what() << '\n';
     }
 
+}
+
+void menuIncreaseProductStock(Product &prodToEdit) {
+    int amount;
+    std::cout << "Current stock: " << prodToEdit.getStockQuantity() << "\n";
+    if (!readInt("Enter the amount to increase: ", amount)) {
+        std::cerr << "Product edit cancelled: input unavailable.\n";
+        return;
+    }
+    try {
+        prodToEdit.increaseStock(amount);
+        std::cout << "Increased the stock quantity of product " << prodToEdit.getSku()
+                  << " by " << amount << " to " << prodToEdit.getStockQuantity() << ".\n";
+    }
+    catch (const std::invalid_argument& e) {
+        std::cerr << "Cannot increase stock quantity: " << e.what() << '\n';
+    }
+    catch (const std::overflow_error& e) {
+        std::cerr << "Cannot increase stock quantity: " << e.what() << '\n';
+    }
+}
+
+void menuDecreaseProductStock(Product &prodToEdit) {
+    int amount;
+    std::cout << "Current stock: " << prodToEdit.getStockQuantity() << "\n";
+    if (!readInt("Enter the amount to decrease: ", amount)) {
+        std::cerr << "Product edit cancelled: input unavailable.\n";
+        return;
+    }
+    try {
+        prodToEdit.decreaseStock(amount);
+        std::cout << "Decreased the stock quantity of product " << prodToEdit.getSku()
+                  << " by " << amount << " to " << prodToEdit.getStockQuantity() << ".\n";
+    }
+    catch (const std::invalid_argument& e) {
+        std::cerr << "Cannot decrease stock quantity: " << e.what() << '\n';
+    }
+    catch (const std::out_of_range& e) {
+        std::cerr << "Cannot decrease stock quantity: " << e.what() << '\n';
+    }
 }

@@ -3,6 +3,7 @@
 #include <string>
 #include <stdexcept>
 #include <exception>
+#include <limits>
 
 std::string testConstructorInvalidSKU(const std::string& sku);
 
@@ -50,10 +51,14 @@ std::string testSetProductNameValid(const std::string& newName);
 std::string testSetProductNameInvalid(const std::string& invalidName);
 std::string testSetUnitPriceValid(std::int64_t newPrice);
 std::string testSetUnitPriceNegative();
-std::string testSetStockQuantityValid(int newQuantity);
-std::string testSetStockQuantityNegative();
 std::string testSetReorderLevelValid(int newLevel);
 std::string testSetReorderLevelNegative();
+std::string testIncreaseStockValid(int initialStock, int amount, int expectedStock);
+std::string testIncreaseStockInvalidArgument(int amount);
+std::string testIncreaseStockOverflow();
+std::string testDecreaseStockValid(int initialStock, int amount, int expectedStock);
+std::string testDecreaseStockInvalidArgument(int amount);
+std::string testDecreaseStockOutOfRange();
 
 int main(int argc, char* argv[])
 {
@@ -144,15 +149,6 @@ int main(int argc, char* argv[])
     else if (testName == "set_price_negative") {
         errors = testSetUnitPriceNegative();
     }
-    else if (testName == "set_stock_positive") {
-        errors = testSetStockQuantityValid(25);
-    }
-    else if (testName == "set_stock_zero") {
-        errors = testSetStockQuantityValid(0);
-    }
-    else if (testName == "set_stock_negative") {
-        errors = testSetStockQuantityNegative();
-    }
     else if (testName == "set_reorder_positive") {
         errors = testSetReorderLevelValid(12);
     }
@@ -161,6 +157,37 @@ int main(int argc, char* argv[])
     }
     else if (testName == "set_reorder_negative") {
         errors = testSetReorderLevelNegative();
+    }
+    else if (testName == "increase_stock_positive") {
+        errors = testIncreaseStockValid(3, 2, 5);
+    }
+    else if (testName == "increase_stock_zero") {
+        errors = testIncreaseStockInvalidArgument(0);
+    }
+    else if (testName == "increase_stock_negative") {
+        errors = testIncreaseStockInvalidArgument(-1);
+    }
+    else if (testName == "increase_stock_to_max") {
+        errors = testIncreaseStockValid(std::numeric_limits<int>::max() - 1, 1,
+                                        std::numeric_limits<int>::max());
+    }
+    else if (testName == "increase_stock_overflow") {
+        errors = testIncreaseStockOverflow();
+    }
+    else if (testName == "decrease_stock_positive") {
+        errors = testDecreaseStockValid(3, 2, 1);
+    }
+    else if (testName == "decrease_stock_zero") {
+        errors = testDecreaseStockInvalidArgument(0);
+    }
+    else if (testName == "decrease_stock_negative") {
+        errors = testDecreaseStockInvalidArgument(-1);
+    }
+    else if (testName == "decrease_stock_to_zero") {
+        errors = testDecreaseStockValid(3, 3, 0);
+    }
+    else if (testName == "decrease_stock_excessive") {
+        errors = testDecreaseStockOutOfRange();
     }
     else {
         std::cerr << "Unknown test name: " << testName << "\n";
@@ -408,34 +435,6 @@ std::string testSetUnitPriceNegative()
     return "Expected std::invalid_argument for a negative unit price.\n";
 }
 
-std::string testSetStockQuantityValid(const int newQuantity)
-{
-    Product product("P001", "Cake", 1000, 10, 5);
-    product.setStockQuantity(newQuantity);
-
-    if (product.getStockQuantity() != newQuantity) {
-        return "Stock quantity was not updated.\n";
-    }
-    return {};
-}
-
-std::string testSetStockQuantityNegative()
-{
-    Product product("P001", "Cake", 1000, 10, 5);
-
-    try {
-        product.setStockQuantity(-1);
-    }
-    catch (const std::invalid_argument&) {
-        if (product.getStockQuantity() != 10) {
-            return "Stock quantity changed after a rejected update.\n";
-        }
-        return {};
-    }
-
-    return "Expected std::invalid_argument for a negative stock quantity.\n";
-}
-
 std::string testSetReorderLevelValid(const int newLevel)
 {
     Product product("P001", "Cake", 1000, 10, 5);
@@ -462,4 +461,116 @@ std::string testSetReorderLevelNegative()
     }
 
     return "Expected std::invalid_argument for a negative reorder level.\n";
+}
+
+std::string testIncreaseStockValid(const int initialStock, const int amount,
+                                   const int expectedStock)
+{
+    Product product("P001", "Cake", 1000, initialStock, 5);
+    product.increaseStock(amount);
+
+    if (product.getStockQuantity() != expectedStock) {
+        return "Stock quantity was incorrect after an increase.\n";
+    }
+    return {};
+}
+
+std::string testIncreaseStockInvalidArgument(const int amount)
+{
+    constexpr int initialStock{3};
+    Product product("P001", "Cake", 1000, initialStock, 5);
+
+    try {
+        product.increaseStock(amount);
+    }
+    catch (const std::invalid_argument&) {
+        if (product.getStockQuantity() != initialStock) {
+            return "Stock changed after a rejected increase.\n";
+        }
+        return {};
+    }
+    catch (const std::exception& error) {
+        return "Unexpected exception for an invalid stock increase: "
+            + std::string{error.what()} + "\n";
+    }
+
+    return "Expected std::invalid_argument for a non-positive stock increase.\n";
+}
+
+std::string testIncreaseStockOverflow()
+{
+    constexpr int initialStock{std::numeric_limits<int>::max()};
+    Product product("P001", "Cake", 1000, initialStock, 5);
+
+    try {
+        product.increaseStock(1);
+    }
+    catch (const std::overflow_error&) {
+        if (product.getStockQuantity() != initialStock) {
+            return "Stock changed after a rejected overflowing increase.\n";
+        }
+        return {};
+    }
+    catch (const std::exception& error) {
+        return "Unexpected exception for an overflowing stock increase: "
+            + std::string{error.what()} + "\n";
+    }
+
+    return "Expected std::overflow_error for a stock increase overflow.\n";
+}
+
+std::string testDecreaseStockValid(const int initialStock, const int amount,
+                                   const int expectedStock)
+{
+    Product product("P001", "Cake", 1000, initialStock, 5);
+    product.decreaseStock(amount);
+
+    if (product.getStockQuantity() != expectedStock) {
+        return "Stock quantity was incorrect after a decrease.\n";
+    }
+    return {};
+}
+
+std::string testDecreaseStockInvalidArgument(const int amount)
+{
+    constexpr int initialStock{3};
+    Product product("P001", "Cake", 1000, initialStock, 5);
+
+    try {
+        product.decreaseStock(amount);
+    }
+    catch (const std::invalid_argument&) {
+        if (product.getStockQuantity() != initialStock) {
+            return "Stock changed after a rejected decrease.\n";
+        }
+        return {};
+    }
+    catch (const std::exception& error) {
+        return "Unexpected exception for an invalid stock decrease: "
+            + std::string{error.what()} + "\n";
+    }
+
+    return "Expected std::invalid_argument for a non-positive stock decrease.\n";
+}
+
+std::string testDecreaseStockOutOfRange()
+{
+    constexpr int initialStock{3};
+    Product product("P001", "Cake", 1000, initialStock, 5);
+
+    try {
+        product.decreaseStock(4);
+    }
+    catch (const std::out_of_range&) {
+        if (product.getStockQuantity() != initialStock) {
+            return "Stock changed after a rejected excessive decrease.\n";
+        }
+        return {};
+    }
+    catch (const std::exception& error) {
+        return "Unexpected exception for an excessive stock decrease: "
+            + std::string{error.what()} + "\n";
+    }
+
+    return "Expected std::out_of_range for an excessive stock decrease.\n";
 }
