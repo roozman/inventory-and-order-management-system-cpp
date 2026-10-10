@@ -27,6 +27,7 @@ public:
     void setReorderLevel(int reorderLevel);
     void increaseStock(int amount);
     void decreaseStock(int amount);
+    bool isLowStock() const;
 };
 
 #endif //STORE_PRODUCT_H

@@ -59,6 +59,7 @@ std::string testIncreaseStockOverflow();
 std::string testDecreaseStockValid(int initialStock, int amount, int expectedStock);
 std::string testDecreaseStockInvalidArgument(int amount);
 std::string testDecreaseStockOutOfRange();
+std::string testLowStockStatus(int stockQuantity, int reorderLevel, bool expected);
 
 int main(int argc, char* argv[])
 {
@@ -188,6 +189,18 @@ int main(int argc, char* argv[])
     }
     else if (testName == "decrease_stock_excessive") {
         errors = testDecreaseStockOutOfRange();
+    }
+    else if (testName == "low_stock_below") {
+        errors = testLowStockStatus(2, 3, true);
+    }
+    else if (testName == "low_stock_equal") {
+        errors = testLowStockStatus(3, 3, true);
+    }
+    else if (testName == "low_stock_above") {
+        errors = testLowStockStatus(4, 3, false);
+    }
+    else if (testName == "low_stock_zero_threshold") {
+        errors = testLowStockStatus(0, 0, true);
     }
     else {
         std::cerr << "Unknown test name: " << testName << "\n";
@@ -573,4 +586,15 @@ std::string testDecreaseStockOutOfRange()
     }
 
     return "Expected std::out_of_range for an excessive stock decrease.\n";
+}
+
+std::string testLowStockStatus(const int stockQuantity, const int reorderLevel,
+                               const bool expected)
+{
+    const Product product("P001", "Cake", 1000, stockQuantity, reorderLevel);
+
+    if (product.isLowStock() != expected) {
+        return "Low-stock status did not match the stock and reorder level.\n";
+    }
+    return {};
 }

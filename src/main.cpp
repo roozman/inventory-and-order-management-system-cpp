@@ -9,8 +9,9 @@
 enum class MainMenuOptions {
     AddProduct = 1,
     ListProducts = 2,
-    OpenProductOperations = 3,
-    Exit = 4
+    LowStockProducts = 3,
+    OpenProductOperations = 4,
+    Exit = 5
 };
 
 enum class ProductOperationsMenuOptions {
@@ -32,6 +33,7 @@ void menuEditProductUnitPrice(Product& prodToEdit);
 void menuEditProductReorderLevel(Product& prodToEdit);
 void menuIncreaseProductStock(Product& prodToEdit);
 void menuDecreaseProductStock(Product& prodToEdit);
+void displayLowStockProducts(const std::vector<const Product*>& lowStockProds);
 
 bool readInt64(const std::string& prompt, std::int64_t& value);
 bool readInt(const std::string& prompt, int& value);
@@ -51,6 +53,11 @@ int main() {
             case MainMenuOptions::ListProducts:
                 menuListProducts(productsList);
                 break;
+            case MainMenuOptions::LowStockProducts: {
+                const auto lowStockReport = getLowStockProducts(productsList);
+                displayLowStockProducts(lowStockReport);
+                break;
+            }
             case MainMenuOptions::OpenProductOperations:
                 showProductOperationsMenu(productsList);
                 break;
@@ -99,8 +106,9 @@ void showMenu() {
     << std::string(40, '=') << '\n'
     << "1. Add product\n"
     << "2. List products\n"
-    << "3. Product operations\n"
-    << "4. Exit\n";
+    << "3. Show low stock products\n"
+    << "4. Product operations\n"
+    << "5. Exit\n";
 }
 
 void showProductOperationsMenu(std::vector<Product> &prodList) {
@@ -264,29 +272,26 @@ void menuListProducts(const std::vector<Product> &prodList) {
         std::cout << "No products registered.\n";
         return;
     }
-    std::cout
-        << std::left
-        << std::setw(10) << "SKU"
-        << std::setw(25) << "Name"
-        << std::right
-        << std::setw(15) << "Unit Price"
-        << std::setw(10) << "Stock"
-        << std::setw(15) << "Reorder Level"
-        << '\n';
+    std::cout << std::left
+              << std::setw(8)  << "SKU"
+              << std::setw(25) << "Name"
+              << std::setw(15) << "Unit Price"
+              << std::setw(12) << "Stock"
+              << std::setw(17) << "Reorder Level"
+              << "Status\n";
 
-    std::cout << std::string(75, '-') << '\n';
+    std::cout << std::string(90, '-') << '\n';
     for (const auto& product : prodList) {
-        std::cout
-            << std::left
-            << std::setw(10) << product.getSku()
-            << std::setw(25) << product.getProductName()
-            << std::right
-            << std::setw(15) << product.getUnitPrice()
-            << std::setw(10) << product.getStockQuantity()
-            << std::setw(15) << product.getReorderLevel()
-            << '\n';
+        std::cout << std::left
+                  << std::setw(8)  << product.getSku()
+                  << std::setw(25) << product.getProductName()
+                  << std::setw(15) << product.getUnitPrice()
+                  << std::setw(12) << product.getStockQuantity()
+                  << std::setw(17) << product.getReorderLevel()
+                  << (product.isLowStock() ? "Low stock" : "In stock")
+                  << '\n';
     }
-    std::cout << std::string(75, '-') << "\n\n";
+    std::cout << std::string(90, '-') << "\n\n";
 }
 
 void menuEditProductName(Product &prodToEdit) {
@@ -383,5 +388,29 @@ void menuDecreaseProductStock(Product &prodToEdit) {
     }
     catch (const std::out_of_range& e) {
         std::cerr << "Cannot decrease stock quantity: " << e.what() << '\n';
+    }
+}
+
+void displayLowStockProducts(const std::vector<const Product *>& lowStockProds) {
+
+    std::cout << "Low-stock products\n";
+    std::cout << "------------------\n";
+    if (lowStockProds.empty()) {
+        std::cout << "No low-stock products found.\n";
+        return;
+    }
+
+    for (const Product* product : lowStockProds) {
+        std::cout
+            << std::left
+            << std::setw(6) << product->getSku()
+            << " | "
+            << std::setw(20) << product->getProductName()
+            << " | Stock: "
+            << std::right
+            << std::setw(3) << product->getStockQuantity()
+            << " | Reorder level: "
+            << product->getReorderLevel()
+            << '\n';
     }
 }

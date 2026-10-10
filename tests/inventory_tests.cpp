@@ -18,6 +18,11 @@ std::string sku_next_empty();
 std::string sku_next_unordered();
 std::string sku_next_exhausted();
 std::string sku_consecutive_registration();
+std::string low_stock_empty_inventory();
+std::string low_stock_no_matches();
+std::string low_stock_one_match();
+std::string low_stock_mixed_inventory();
+std::string low_stock_zero_threshold();
 
 int main(int argc, char* argv[]) {
     if (argc != 2) {
@@ -66,6 +71,21 @@ int main(int argc, char* argv[]) {
     }
     else if (testName == "sku_consecutive_registration") {
         errors = sku_consecutive_registration();
+    }
+    else if (testName == "low_stock_empty_inventory") {
+        errors = low_stock_empty_inventory();
+    }
+    else if (testName == "low_stock_no_matches") {
+        errors = low_stock_no_matches();
+    }
+    else if (testName == "low_stock_one_match") {
+        errors = low_stock_one_match();
+    }
+    else if (testName == "low_stock_mixed_inventory") {
+        errors = low_stock_mixed_inventory();
+    }
+    else if (testName == "low_stock_zero_threshold") {
+        errors = low_stock_zero_threshold();
     }
     else {
         std::cerr << "Unknown test name: " << testName << "\n";
@@ -296,4 +316,73 @@ std::string inventory_add_reject_duplicate() {
         }
         return errors;
     }
+}
+
+std::string low_stock_empty_inventory()
+{
+    const std::vector<Product> products;
+    const auto result = getLowStockProducts(products);
+
+    if (!result.empty()) {
+        return "An empty inventory produced low-stock results.\n";
+    }
+    return {};
+}
+
+std::string low_stock_no_matches()
+{
+    const std::vector<Product> products{
+        Product("P001", "Cake", 1000, 4, 3),
+        Product("P002", "Biscuit", 2000, 10, 2)
+    };
+    const auto result = getLowStockProducts(products);
+
+    if (!result.empty()) {
+        return "Products above their reorder levels were reported as low stock.\n";
+    }
+    return {};
+}
+
+std::string low_stock_one_match()
+{
+    const std::vector<Product> products{
+        Product("P001", "Cake", 1000, 2, 3),
+        Product("P002", "Biscuit", 2000, 10, 2)
+    };
+    const auto result = getLowStockProducts(products);
+
+    if (result.size() != 1 || result.front() != &products.at(0)) {
+        return "The low-stock report did not return the expected product.\n";
+    }
+    return {};
+}
+
+std::string low_stock_mixed_inventory()
+{
+    const std::vector<Product> products{
+        Product("P001", "Cake", 1000, 2, 3),
+        Product("P002", "Biscuit", 2000, 3, 3),
+        Product("P003", "Juice", 3000, 4, 3)
+    };
+    const auto result = getLowStockProducts(products);
+
+    if (result.size() != 2 || result.at(0) != &products.at(0)
+        || result.at(1) != &products.at(1)) {
+        return "The mixed inventory low-stock results were incorrect.\n";
+    }
+    return {};
+}
+
+std::string low_stock_zero_threshold()
+{
+    const std::vector<Product> products{
+        Product("P001", "Cake", 1000, 0, 0),
+        Product("P002", "Biscuit", 2000, 1, 0)
+    };
+    const auto result = getLowStockProducts(products);
+
+    if (result.size() != 1 || result.front() != &products.at(0)) {
+        return "Zero stock with a zero reorder level was not reported as low stock.\n";
+    }
+    return {};
 }

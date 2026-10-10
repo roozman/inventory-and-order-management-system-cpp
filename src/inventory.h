@@ -10,5 +10,6 @@ Product* getProductBySKU(std::vector<Product>& products, const std::string& sku)
 void addProduct(std::vector<Product>& products, const Product& product);
 std::string generateSKU(std::uint32_t id);
 std::uint32_t findNextID(const std::vector<Product>& products);
+std::vector<const Product*> getLowStockProducts(const std::vector<Product>& products);
 
 #endif //STORE_INVENTORY_H

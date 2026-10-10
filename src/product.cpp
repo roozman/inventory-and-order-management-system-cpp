@@ -93,3 +93,7 @@ void Product::decreaseStock(const int amount) {
     }
     stockQuantity_ -= amount;
 }
+
+bool Product::isLowStock() const {
+    return stockQuantity_ <= reorderLevel_;
+}
