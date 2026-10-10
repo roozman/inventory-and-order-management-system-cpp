@@ -2,6 +2,9 @@
 #include <iostream>
 #include <string>
 #include <stdexcept>
+#include <exception>
+
+std::string testConstructorInvalidSKU(const std::string& sku);
 
 std::string testConstructorMatchingValues(std::string sku,
     std::string productName,
@@ -79,6 +82,36 @@ int main(int argc, char* argv[])
     else if (testName == "name_whitespace") {
         errors = testConstructorNameContainingWhitespace("P001", "fish cracker", 10000, 0, 0);
     }
+    else if (testName == "sku_empty") {
+        errors = testConstructorInvalidSKU("");
+    }
+    else if (testName == "sku_too_short") {
+        errors = testConstructorInvalidSKU("P01");
+    }
+    else if (testName == "sku_too_long") {
+        errors = testConstructorInvalidSKU("P0001");
+    }
+    else if (testName == "sku_wrong_prefix") {
+        errors = testConstructorInvalidSKU("X001");
+    }
+    else if (testName == "sku_invalid_digit") {
+        errors = testConstructorInvalidSKU("P02Z");
+    }
+    else if (testName == "sku_sign") {
+        errors = testConstructorInvalidSKU("P+01");
+    }
+    else if (testName == "sku_whitespace") {
+        errors = testConstructorInvalidSKU("P 01");
+    }
+    else if (testName == "sku_lowercase") {
+        errors = testConstructorInvalidSKU("P02a");
+    }
+    else if (testName == "sku_reserved") {
+        errors = testConstructorInvalidSKU("P000");
+    }
+    else if (testName == "sku_maximum") {
+        errors = testConstructorMatchingValues("PFFF", "biscuit", 20000, 23, 5);
+    }
     else {
         std::cerr << "Unknown test name: " << testName << "\n";
         return 1;
@@ -91,6 +124,23 @@ int main(int argc, char* argv[])
 
     std::cout << "passed.\n";
     return 0;
+}
+
+std::string testConstructorInvalidSKU(const std::string& sku)
+{
+    try {
+        Product product(sku, "biscuit", 20000, 23, 5);
+    }
+    catch (const std::invalid_argument&) {
+        return {};
+    }
+    catch (const std::exception& error) {
+        return "Unexpected exception for SKU '" + sku + "': " + error.what() + "\n";
+    }
+    catch (...) {
+        return "Unexpected non-standard exception for SKU '" + sku + "'.\n";
+    }
+    return "Invalid SKU '" + sku + "' was accepted.\n";
 }
 
 std::string testConstructorMatchingValues(
