@@ -8,10 +8,18 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 add_executable(store main.cpp
         product.h
         product.cpp
+        inventory.h
+        inventory.cpp
 )
 
 add_executable(product_tests
     tests/product_tests.cpp
+        product.cpp
+)
+
+add_executable(inventory_tests
+    tests/inventory_tests.cpp
+        inventory.cpp
         product.cpp
 )
 
@@ -20,6 +28,9 @@ target_compile_options(store PRIVATE
 )
 
 target_compile_options(product_tests PRIVATE
+        -Wall -Wextra -Wpedantic
+)
+target_compile_options(inventory_tests PRIVATE
         -Wall -Wextra -Wpedantic
 )
 
@@ -32,3 +43,9 @@ add_test(NAME product_constructor_exception_negative_stock_quantity COMMAND prod
 add_test(NAME product_constructor_exception_negative_reorder_level COMMAND product_tests neg_reorder)
 add_test(NAME product_constructor_all_zero_values COMMAND product_tests all_zero_values)
 add_test(NAME product_constructor_name_has_whitespace COMMAND product_tests name_whitespace)
+add_test(NAME inventory_lookup_empty COMMAND inventory_tests inventory_lookup_empty)
+add_test(NAME inventory_lookup_existing COMMAND inventory_tests inventory_lookup_existing)
+add_test(NAME inventory_lookup_nonempty_unknown_sku COMMAND inventory_tests inventory_lookup_nonempty_unknown_sku)
+add_test(NAME inventory_add_first_product COMMAND inventory_tests inventory_add_first_product)
+add_test(NAME inventory_add_to_nonempty_vector COMMAND inventory_tests inventory_add_to_nonempty_vector)
+add_test(NAME inventory_add_reject_duplicate COMMAND inventory_tests inventory_add_reject_duplicate)
