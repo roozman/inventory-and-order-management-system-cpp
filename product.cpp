@@ -10,6 +10,10 @@ Product::Product(std::string sku,
                  const int reorderLevel
 )
     : sku_{sku}, productName_{productName}, unitPrice_{unitPrice}, stockQuantity_{stockQuantity}, reorderLevel_{reorderLevel} {
+    if (sku.size() != 4 || sku[0] != 'P'
+        || sku == "P000" || sku.substr(1).find_first_not_of("0123456789ABCDEF") != std::string::npos) {
+        throw std::invalid_argument("Invalid SKU: expected P001 through PFFF using uppercase hexadecimal digits.");
+    }
     if (productName_.empty()) {
         throw std::invalid_argument("product name cannot be empty.");
     }

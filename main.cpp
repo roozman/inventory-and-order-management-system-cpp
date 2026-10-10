@@ -1,17 +1,27 @@
 #include "product.h"
+#include "inventory.h"
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
 
 int main() {
+
     std::cout << "Welcome to the store management app!" << "\n";
 
     std::string productName;
     std::int64_t unitPrice{0};
     int stockQuantity{0};
     int reorderLevel{0};
+    std::vector<Product> productsList;
 
     while (true) {
+        for (const auto& prod : productsList) {
+            std::cout << "-----debug-----\n";
+            std::cout << "SKU: " << prod.getSku()<< " Name: " << prod.getProductName() << " Unit price: " << prod.getUnitPrice() <<
+                " stock Q: " << prod.getStockQuantity() << " reorder level: " << prod.getReorderLevel() << "\n";
+            std::cout << "----------\n";
+        }
+
         std::cout << "Enter product name: ";
         if (!getline(std::cin, productName)) {
             return 1;
@@ -67,14 +77,20 @@ int main() {
         }
 
         try {
-            Product prod1("1aa", productName, unitPrice, stockQuantity,  reorderLevel);
-            std::cout << "Product name: " << prod1.getProductName() << " successfully created!\n";
-            std::cout << "Stock keeping unit: " << prod1.getSku() << " | Unit price: " << prod1.getUnitPrice() << "\n";
-            std::cout << "Stock quantity: " << prod1.getStockQuantity() << " | Reorder level: " << prod1.getReorderLevel() << "\n";
-            break;
+            const auto nextID = findNextID(productsList);
+            const std::string sku = generateSKU(nextID);
+
+            Product newProduct(sku, productName, unitPrice,
+                               stockQuantity, reorderLevel);
+
+            addProduct(productsList, newProduct);
         }
         catch (const std::invalid_argument& e) {
-            std::cout << "Invalid argument: " << e.what() << "\n";
+            std::cerr << "Cannot add product: " << e.what() << '\n';
+        }
+        catch (const std::out_of_range& e) {
+            std::cerr << "Cannot generate SKU: " << e.what() << '\n';
+            break;
         }
     }
 

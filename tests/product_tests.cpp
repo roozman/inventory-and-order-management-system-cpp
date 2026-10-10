@@ -56,28 +56,28 @@ int main(int argc, char* argv[])
     std::string errors;
 
     if (testName == "valid") {
-        errors = testConstructorMatchingValues("fff", "biscuit", 20000, 23, 5);
+        errors = testConstructorMatchingValues("P001", "biscuit", 20000, 23, 5);
     }
     else if (testName == "empty_name") {
-        errors = testConstructorEmptyName("fff", "",20000, 23, 5 );
+        errors = testConstructorEmptyName("P001", "",20000, 23, 5 );
     }
     else if (testName == "whitespace_name") {
-        errors = testConstructorWhitespaceOnlyName("fff", "   ", 20000, 23, 5);
+        errors = testConstructorWhitespaceOnlyName("P001", "   ", 20000, 23, 5);
     }
     else if (testName == "neg_stock") {
-        errors = testConstructorNegativeStock("fff", "cake", 20000, -23, 5);
+        errors = testConstructorNegativeStock("P001", "cake", 20000, -23, 5);
     }
     else if (testName == "neg_price") {
-        errors = testConstructorNegativePrice("fff", "chips", -20000, 23, 5);
+        errors = testConstructorNegativePrice("P001", "chips", -20000, 23, 5);
     }
     else if (testName == "neg_reorder") {
-        errors = testConstructorNegativeReorder("fff", "chips", 20000, 23, -5);
+        errors = testConstructorNegativeReorder("P001", "chips", 20000, 23, -5);
     }
     else if (testName == "all_zero_values") {
-        errors = testConstructorAllZeroValues("fff", "chips", 0, 0, 0);
+        errors = testConstructorAllZeroValues("P001", "chips", 0, 0, 0);
     }
     else if (testName == "name_whitespace") {
-        errors = testConstructorNameContainingWhitespace("fff", "fish cracker", 10000, 0, 0);
+        errors = testConstructorNameContainingWhitespace("P001", "fish cracker", 10000, 0, 0);
     }
     else {
         std::cerr << "Unknown test name: " << testName << "\n";
