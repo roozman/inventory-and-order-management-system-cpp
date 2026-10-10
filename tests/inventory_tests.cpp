@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 #include <stdexcept>
-#include "../inventory.h"
+#include "../src/inventory.h"
 
 std::string inventory_lookup_empty();
 std::string inventory_lookup_existing();

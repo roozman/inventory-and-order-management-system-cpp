@@ -3,24 +3,38 @@
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
+#include <limits>
+
+void showMenu();
 
 int main() {
-
-    std::cout << "Welcome to the store management app!" << "\n";
-
     std::string productName;
     std::int64_t unitPrice{0};
     int stockQuantity{0};
     int reorderLevel{0};
     std::vector<Product> productsList;
+    int choice{0};
 
     while (true) {
-        for (const auto& prod : productsList) {
-            std::cout << "-----debug-----\n";
-            std::cout << "SKU: " << prod.getSku()<< " Name: " << prod.getProductName() << " Unit price: " << prod.getUnitPrice() <<
-                " stock Q: " << prod.getStockQuantity() << " reorder level: " << prod.getReorderLevel() << "\n";
-            std::cout << "----------\n";
+        showMenu();
+
+        if (!(std::cin >> choice)) {
+            if (std::cin.eof()) {
+                break;
+            }
+            std::cin.clear();
+            std::cin.ignore(
+                std::numeric_limits<std::streamsize>::max(),
+                '\n'
+            );
+
+            std::cout << "Invalid input.\n";
+            continue;
         }
+        std::cin.ignore(
+            std::numeric_limits<std::streamsize>::max(),
+            '\n'
+        );
 
         std::cout << "Enter product name: ";
         if (!getline(std::cin, productName)) {
@@ -94,4 +108,13 @@ int main() {
         }
     }
 
+}
+
+void showMenu() {
+    std::cout << "==================================================\n"
+    << "Inventory and Order Management System\n"
+    << "==================================================\n"
+    << "1. Add product\n"
+    << "2. List product\n"
+    << "3. Exit\n";
 }

@@ -5,22 +5,22 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-add_executable(store main.cpp
-        product.h
-        product.cpp
-        inventory.h
-        inventory.cpp
+add_executable(store src/main.cpp
+        src/product.h
+        src/product.cpp
+        src/inventory.h
+        src/inventory.cpp
 )
 
 add_executable(product_tests
     tests/product_tests.cpp
-        product.cpp
+        src/product.cpp
 )
 
 add_executable(inventory_tests
     tests/inventory_tests.cpp
-        inventory.cpp
-        product.cpp
+        src/inventory.cpp
+        src/product.cpp
 )
 
 target_compile_options(store PRIVATE
