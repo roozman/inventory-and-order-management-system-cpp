@@ -1,17 +1,26 @@
 #include "product.h"
 #include "inventory.h"
+#include "customer.h"
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
 #include <limits>
 #include <iomanip>
+#include <algorithm>
+#include <array>
+#include <random>
+
+#include "customer_registry.h"
 
 enum class MainMenuOptions {
     AddProduct = 1,
     ListProducts = 2,
     LowStockProducts = 3,
     OpenProductOperations = 4,
-    Exit = 5
+    RegisterCustomer = 5,
+    ListCustomers = 6,
+    FindCustomerById = 7,
+    Exit = 8
 };
 
 enum class ProductOperationsMenuOptions {
@@ -36,13 +45,22 @@ void menuIncreaseProductStock(Product& prodToEdit);
 void menuDecreaseProductStock(Product& prodToEdit);
 void displayLowStockProducts(const std::vector<const Product*>& lowStockProds);
 void menuArchiveProduct(Product& prodToEdit);
+void menuRegisterCustomer(std::vector<Customer>& customersList);
+void menuListCustomers(const std::vector<Customer>& customersList);
+void menuFindCustomerById(std::vector<Customer>& customersList);
 
 bool readInt64(const std::string& prompt, std::int64_t& value);
 bool readInt(const std::string& prompt, int& value);
 int readMenuOption();
 
+// Temporary function for testing purposes. Will be removed later.
+void createTestingData(std::vector<Product>& prodList, std::vector<Customer>& customerList);
+
 int main() {
     std::vector<Product> productsList;
+    std::vector<Customer> customersList;
+    createTestingData(productsList, customersList);
+
     int choice{0};
     while (true) {
         showMenu();
@@ -63,6 +81,15 @@ int main() {
             case MainMenuOptions::OpenProductOperations:
                 showProductOperationsMenu(productsList);
                 break;
+            case MainMenuOptions::RegisterCustomer:
+                menuRegisterCustomer(customersList);
+                break;
+            case MainMenuOptions::ListCustomers:
+                menuListCustomers(customersList);
+                break;
+            case MainMenuOptions::FindCustomerById:
+                menuFindCustomerById(customersList);
+                break;
             case MainMenuOptions::Exit:
                 return 0;
             default:
@@ -74,6 +101,34 @@ int main() {
         if (std::string input; !std::getline(std::cin, input)) {
             break;
         }
+    }
+}
+
+void createTestingData(std::vector<Product> &prodList, std::vector<Customer> &customerList) {
+    // A fixed seed makes a failed manual run reproducible.
+    std::mt19937 generator{0xC0FFEEu};
+    std::array<std::string, 5> productNames{
+        "Notebook", "Desk Lamp", "Keyboard", "Water Bottle", "Backpack"
+    };
+    std::array<std::string, 5> customerNames{
+        "Alice Smith", "Bob Jones", "Carol Lee", "David Kim", "Emma Brown"
+    };
+    std::shuffle(productNames.begin(), productNames.end(), generator);
+    std::shuffle(customerNames.begin(), customerNames.end(), generator);
+
+    std::uniform_int_distribution<int> priceDistribution{1000, 50000};
+    std::uniform_int_distribution<int> stockDistribution{0, 30};
+    std::uniform_int_distribution<int> reorderDistribution{0, 10};
+
+    for (const auto& name : productNames) {
+        const auto sku = generateSKU(findNextID(prodList));
+        addProduct(prodList, Product{sku, name, priceDistribution(generator),
+                                     stockDistribution(generator), reorderDistribution(generator)});
+    }
+
+    for (const auto& name : customerNames) {
+        const auto id = generateCustomerId(findNextCustomerId(customerList));
+        addCustomer(customerList, Customer{id, name});
     }
 }
 
@@ -109,8 +164,11 @@ void showMenu() {
     << "1. Add product\n"
     << "2. List products\n"
     << "3. Show low stock products\n"
-    << "4. Product operations\n"
-    << "5. Exit\n";
+    << "4. Product operations\n\n"
+    << "5. Register customer\n"
+    << "6. List customers\n"
+    << "7. Find customer by ID\n\n"
+    << "8. Exit\n";
 }
 
 void showProductOperationsMenu(std::vector<Product> &prodList) {
@@ -436,5 +494,85 @@ void menuArchiveProduct(Product &prodToEdit) {
     }
     catch (const std::logic_error& error) {
         std::cerr << "Failed to archive product: " << error.what() << '\n';
+    }
+}
+
+void menuRegisterCustomer(std::vector<Customer> &customersList) {
+    std::string name;
+    std::cout << "Enter customer name: ";
+
+    if (!getline(std::cin, name)) {
+        std::cerr << "Customer registration cancelled: input unavailable.\n";
+        return;
+    }
+
+    try {
+        const auto nextId = findNextCustomerId(customersList);
+        const std::string customerId = generateCustomerId(nextId);
+
+        Customer newCustomer(customerId, name);
+        addCustomer(customersList, newCustomer);
+        std::cout << "Customer \"" << name
+            << "\" with ID: " << newCustomer.getId()
+            << " successfully registered!\n";
+    }
+    catch (const std::invalid_argument& e) {
+        std::cerr << "Cannot register customer: " << e.what() << '\n';
+    }
+    catch (const std::out_of_range& e) {
+        std::cerr << "Cannot generate customer ID: " << e.what() << '\n';
+    }
+}
+
+void menuListCustomers(const std::vector<Customer> &customersList) {
+    if (customersList.empty()) {
+        std::cout << "No customers registered.\n";
+        return;
+    }
+
+    std::cout << std::left
+              << std::setw(12) << "Customer ID"
+              << std::setw(30) << "Customer Name"
+              << '\n';
+
+    std::cout << std::string(42, '-') << '\n';
+
+    for (const auto& customer : customersList) {
+        std::cout << std::left
+                  << std::setw(12) << customer.getId()
+                  << std::setw(30) << customer.getName()
+                  << '\n';
+    }
+
+    std::cout << std::string(42, '-') << '\n';
+}
+
+void menuFindCustomerById(std::vector<Customer> &customersList) {
+    if (customersList.empty()) {
+        std::cout << "No customers registered.\n";
+        return;
+    }
+    std::string id;
+    std::cout << "Enter the customer ID: ";
+    if (!getline(std::cin, id)) {
+        std::cerr << "Input unavailable, terminating operation.\n";
+        return;
+    }
+
+    if (const Customer* foundCustomer = getCustomerById(customersList, id)) {
+        std::cout << std::left
+                  << std::setw(12) << "Customer ID"
+                  << std::setw(30) << "Customer Name"
+                  << '\n';
+
+        std::cout << std::string(42, '-') << '\n';
+
+        std::cout << std::left
+                  << std::setw(12) << foundCustomer->getId()
+                  << std::setw(30) << foundCustomer->getName()
+                  << '\n';
+    }
+    else {
+        std::cout << "Customer not found.\n";
     }
 }
