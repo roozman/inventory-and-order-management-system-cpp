@@ -10,6 +10,10 @@ add_executable(store src/main.cpp
         src/product.cpp
         src/inventory.h
         src/inventory.cpp
+        src/customer.h
+        src/customer.cpp
+        src/customer_registry.cpp
+        src/customer_registry.h
 )
 
 add_executable(product_tests
@@ -23,6 +27,12 @@ add_executable(inventory_tests
         src/product.cpp
 )
 
+add_executable(customer_tests
+    tests/customer_tests.cpp
+    src/customer.cpp
+    src/customer_registry.cpp
+)
+
 target_compile_options(store PRIVATE
         -Wall -Wextra -Wpedantic
 )
@@ -33,8 +43,25 @@ target_compile_options(product_tests PRIVATE
 target_compile_options(inventory_tests PRIVATE
         -Wall -Wextra -Wpedantic
 )
+target_compile_options(customer_tests PRIVATE
+        -Wall -Wextra -Wpedantic
+)
 
 enable_testing()
+add_test(NAME customer_valid COMMAND customer_tests valid)
+add_test(NAME customer_invalid_ids COMMAND customer_tests invalid_ids)
+add_test(NAME customer_invalid_names COMMAND customer_tests invalid_names)
+add_test(NAME customer_lookup_empty COMMAND customer_tests lookup_empty)
+add_test(NAME customer_lookup_existing COMMAND customer_tests lookup_existing)
+add_test(NAME customer_lookup_missing COMMAND customer_tests lookup_missing)
+add_test(NAME customer_add COMMAND customer_tests add)
+add_test(NAME customer_add_duplicate COMMAND customer_tests add_duplicate)
+add_test(NAME customer_id_formatting COMMAND customer_tests id_formatting)
+add_test(NAME customer_id_invalid_range COMMAND customer_tests id_invalid_range)
+add_test(NAME customer_next_id_empty COMMAND customer_tests next_id_empty)
+add_test(NAME customer_next_id_unordered COMMAND customer_tests next_id_unordered)
+add_test(NAME customer_next_id_exhausted COMMAND customer_tests next_id_exhausted)
+add_test(NAME customer_consecutive_registration COMMAND customer_tests consecutive_registration)
 add_test(NAME product_constructor_validator COMMAND product_tests valid)
 add_test(NAME product_constructor_exception_empty_name COMMAND product_tests empty_name)
 add_test(NAME product_constructor_exception_whitespace_name COMMAND product_tests whitespace_name)

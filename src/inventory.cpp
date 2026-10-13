@@ -39,6 +39,7 @@ std::uint32_t findNextID(const std::vector<Product>& products) {
     }
 
     std::uint32_t nextID{0};
+    // Products may be reordered, and archived SKUs remain reserved, so scan all entries.
     for (const auto& product : products) {
         const std::string sku = product.getSku();
         if (sku.size() != 4 || sku[0] != 'P') {

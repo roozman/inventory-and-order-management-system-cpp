@@ -11,6 +11,7 @@ Product::Product(std::string sku,
                  const int reorderLevel
 )
     : sku_{sku}, productName_{productName}, unitPrice_{unitPrice}, stockQuantity_{stockQuantity}, reorderLevel_{reorderLevel}, archived_{false} {
+    // Validate even if the SKU normally comes from generateSKU: Product can be constructed directly.
     if (sku.size() != 4 || sku[0] != 'P'
         || sku == "P000" || sku.substr(1).find_first_not_of("0123456789ABCDEF") != std::string::npos) {
         throw std::invalid_argument("Invalid SKU: expected P001 through PFFF using uppercase hexadecimal digits.");
@@ -82,6 +83,7 @@ void Product::increaseStock(const int amount) {
     if (amount < 1) {
         throw std::invalid_argument("Stock increase must be a positive integer.");
     }
+    // Check before addition so signed overflow never occurs.
     if (amount > std::numeric_limits<int>::max() - stockQuantity_) {
         throw std::overflow_error("Stock quantity overflow.");
     }
