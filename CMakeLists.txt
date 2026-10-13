@@ -14,6 +14,8 @@ add_executable(store src/main.cpp
         src/customer.cpp
         src/customer_registry.cpp
         src/customer_registry.h
+        src/order_item.h
+        src/order_item.cpp
 )
 
 add_executable(product_tests
@@ -33,6 +35,12 @@ add_executable(customer_tests
     src/customer_registry.cpp
 )
 
+add_executable(order_item_tests
+    tests/order_item_tests.cpp
+    src/order_item.cpp
+    src/product.cpp
+)
+
 target_compile_options(store PRIVATE
         -Wall -Wextra -Wpedantic
 )
@@ -46,8 +54,18 @@ target_compile_options(inventory_tests PRIVATE
 target_compile_options(customer_tests PRIVATE
         -Wall -Wextra -Wpedantic
 )
+target_compile_options(order_item_tests PRIVATE
+        -Wall -Wextra -Wpedantic
+)
 
 enable_testing()
+add_test(NAME order_item_subtotal COMMAND order_item_tests subtotal)
+add_test(NAME order_item_zero_price COMMAND order_item_tests zero_price)
+add_test(NAME order_item_reject_zero_quantity COMMAND order_item_tests zero_quantity)
+add_test(NAME order_item_reject_negative_quantity COMMAND order_item_tests negative_quantity)
+add_test(NAME order_item_subtotal_boundary COMMAND order_item_tests subtotal_boundary)
+add_test(NAME order_item_reject_overflow COMMAND order_item_tests overflow)
+add_test(NAME order_item_preserves_product_snapshot COMMAND order_item_tests snapshot)
 add_test(NAME customer_valid COMMAND customer_tests valid)
 add_test(NAME customer_invalid_ids COMMAND customer_tests invalid_ids)
 add_test(NAME customer_invalid_names COMMAND customer_tests invalid_names)
