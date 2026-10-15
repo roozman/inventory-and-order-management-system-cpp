@@ -16,6 +16,10 @@ add_executable(store src/main.cpp
         src/customer_registry.h
         src/order_item.h
         src/order_item.cpp
+        src/order.h
+        src/order.cpp
+        src/order_registry.h
+        src/order_registry.cpp
 )
 
 add_executable(product_tests
@@ -35,10 +39,15 @@ add_executable(customer_tests
     src/customer_registry.cpp
 )
 
-add_executable(order_item_tests
-    tests/order_item_tests.cpp
-    src/order_item.cpp
+add_executable(order_tests
+    tests/order_tests.cpp
+    src/order.cpp
+    src/order_registry.cpp
+    src/customer.cpp
+    src/customer_registry.cpp
     src/product.cpp
+    src/order_item.cpp
+    src/inventory.cpp
 )
 
 target_compile_options(store PRIVATE
@@ -54,18 +63,44 @@ target_compile_options(inventory_tests PRIVATE
 target_compile_options(customer_tests PRIVATE
         -Wall -Wextra -Wpedantic
 )
-target_compile_options(order_item_tests PRIVATE
+target_compile_options(order_tests PRIVATE
         -Wall -Wextra -Wpedantic
 )
 
 enable_testing()
-add_test(NAME order_item_subtotal COMMAND order_item_tests subtotal)
-add_test(NAME order_item_zero_price COMMAND order_item_tests zero_price)
-add_test(NAME order_item_reject_zero_quantity COMMAND order_item_tests zero_quantity)
-add_test(NAME order_item_reject_negative_quantity COMMAND order_item_tests negative_quantity)
-add_test(NAME order_item_subtotal_boundary COMMAND order_item_tests subtotal_boundary)
-add_test(NAME order_item_reject_overflow COMMAND order_item_tests overflow)
-add_test(NAME order_item_preserves_product_snapshot COMMAND order_item_tests snapshot)
+add_test(NAME order_new_draft COMMAND order_tests new_draft)
+add_test(NAME order_missing_customer COMMAND order_tests missing_customer)
+add_test(NAME order_unique_ids COMMAND order_tests unique_ids)
+add_test(NAME order_next_id_unordered COMMAND order_tests next_id_unordered)
+add_test(NAME order_id_exhausted COMMAND order_tests id_exhausted)
+add_test(NAME order_id_validation COMMAND order_tests id_validation)
+add_test(NAME order_lookup COMMAND order_tests lookup)
+add_test(NAME order_id_formatting COMMAND order_tests id_formatting)
+add_test(NAME order_add_items COMMAND order_tests add_items)
+add_test(NAME order_add_snapshot COMMAND order_tests add_snapshot)
+add_test(NAME order_add_missing_order COMMAND order_tests add_missing_order)
+add_test(NAME order_add_missing_product COMMAND order_tests add_missing_product)
+add_test(NAME order_add_duplicate COMMAND order_tests add_duplicate)
+add_test(NAME order_add_zero_quantity COMMAND order_tests add_zero_quantity)
+add_test(NAME order_add_negative_quantity COMMAND order_tests add_negative_quantity)
+add_test(NAME order_add_overflow COMMAND order_tests add_overflow)
+add_test(NAME order_remove_item COMMAND order_tests remove_item)
+add_test(NAME order_remove_last_item COMMAND order_tests remove_last_item)
+add_test(NAME order_remove_missing_item COMMAND order_tests remove_missing_item)
+add_test(NAME order_remove_empty_order COMMAND order_tests remove_empty_order)
+add_test(NAME order_remove_missing_order COMMAND order_tests remove_missing_order)
+add_test(NAME order_total_empty COMMAND order_tests total_empty)
+add_test(NAME order_total_multiple_items COMMAND order_tests total_multiple_items)
+add_test(NAME order_total_boundary COMMAND order_tests total_boundary)
+add_test(NAME order_total_overflow COMMAND order_tests total_overflow)
+add_test(NAME order_final_total_overflow COMMAND order_tests final_total_overflow)
+add_test(NAME order_item_subtotal COMMAND order_tests subtotal)
+add_test(NAME order_item_zero_price COMMAND order_tests zero_price)
+add_test(NAME order_item_reject_zero_quantity COMMAND order_tests zero_quantity)
+add_test(NAME order_item_reject_negative_quantity COMMAND order_tests negative_quantity)
+add_test(NAME order_item_subtotal_boundary COMMAND order_tests subtotal_boundary)
+add_test(NAME order_item_reject_overflow COMMAND order_tests overflow)
+add_test(NAME order_item_preserves_product_snapshot COMMAND order_tests snapshot)
 add_test(NAME customer_valid COMMAND customer_tests valid)
 add_test(NAME customer_invalid_ids COMMAND customer_tests invalid_ids)
 add_test(NAME customer_invalid_names COMMAND customer_tests invalid_names)

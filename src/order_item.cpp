@@ -10,6 +10,7 @@ OrderItem::OrderItem(const Product &product, int quantity)
     if (quantity <= 0) {
         throw std::invalid_argument("Order quantity must be a non-zero positive integer.");
     }
+    // Check before multiplication to avoid signed integer overflow.
     if (unitPrice_ > std::numeric_limits<std::int64_t>::max() / quantity) {
         throw std::overflow_error("Line subtotal overflow.");
     }

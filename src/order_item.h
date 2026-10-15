@@ -15,6 +15,8 @@ private:
     std::int64_t totalPrice_;
 
 public:
+    // Copies the product identity, name, and price so later product edits cannot
+    // change this line. Quantity must be positive; subtotal overflow is rejected.
     OrderItem(const Product& product, int quantity);
     std::string getProductSKU() const;
     std::string getProductName() const;

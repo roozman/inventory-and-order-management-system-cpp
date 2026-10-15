@@ -1,6 +1,8 @@
 #include "product.h"
 #include "inventory.h"
 #include "customer.h"
+#include "order.h"
+#include "order_registry.h"
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
@@ -20,7 +22,8 @@ enum class MainMenuOptions {
     RegisterCustomer = 5,
     ListCustomers = 6,
     FindCustomerById = 7,
-    Exit = 8
+    OpenOrderMenu = 8,
+    Exit = 9
 };
 
 enum class ProductOperationsMenuOptions {
@@ -35,6 +38,8 @@ enum class ProductOperationsMenuOptions {
 
 void showMenu();
 void showProductOperationsMenu(std::vector<Product>& prodList);
+void menuShowOrder(std::vector<Order>& ordersList);
+
 void menuAddProduct(std::vector<Product>& prodList);
 void menuListProducts(const std::vector<Product>& prodList);
 
@@ -48,18 +53,21 @@ void menuArchiveProduct(Product& prodToEdit);
 void menuRegisterCustomer(std::vector<Customer>& customersList);
 void menuListCustomers(const std::vector<Customer>& customersList);
 void menuFindCustomerById(std::vector<Customer>& customersList);
+void displayOrder(const Order& order);
 
 bool readInt64(const std::string& prompt, std::int64_t& value);
 bool readInt(const std::string& prompt, int& value);
 int readMenuOption();
 
 // Temporary function for testing purposes. Will be removed later.
-void createTestingData(std::vector<Product>& prodList, std::vector<Customer>& customerList);
+void createTestingData(std::vector<Product>& prodList, std::vector<Customer>& customerList,
+                       std::vector<Order>& ordersList);
 
 int main() {
     std::vector<Product> productsList;
     std::vector<Customer> customersList;
-    createTestingData(productsList, customersList);
+    std::vector<Order> ordersList;
+    createTestingData(productsList, customersList, ordersList);
 
     int choice{0};
     while (true) {
@@ -90,6 +98,9 @@ int main() {
             case MainMenuOptions::FindCustomerById:
                 menuFindCustomerById(customersList);
                 break;
+            case MainMenuOptions::OpenOrderMenu:
+                menuShowOrder(ordersList);
+                break;
             case MainMenuOptions::Exit:
                 return 0;
             default:
@@ -104,7 +115,8 @@ int main() {
     }
 }
 
-void createTestingData(std::vector<Product> &prodList, std::vector<Customer> &customerList) {
+void createTestingData(std::vector<Product> &prodList, std::vector<Customer> &customerList,
+                       std::vector<Order>& ordersList) {
     // A fixed seed makes a failed manual run reproducible.
     std::mt19937 generator{0xC0FFEEu};
     std::array<std::string, 5> productNames{
@@ -130,6 +142,17 @@ void createTestingData(std::vector<Product> &prodList, std::vector<Customer> &cu
         const auto id = generateCustomerId(findNextCustomerId(customerList));
         addCustomer(customerList, Customer{id, name});
     }
+
+    // Draft items capture current product prices without changing stock.
+    addDraftOrder(customerList, ordersList, customerList.at(0).getId());
+    const auto firstOrderId = ordersList.back().getId();
+    addItemToOrder(ordersList, prodList, firstOrderId, prodList.at(0).getSku(), 2);
+    addItemToOrder(ordersList, prodList, firstOrderId, prodList.at(1).getSku(), 3);
+
+    addDraftOrder(customerList, ordersList, customerList.at(1).getId());
+    const auto secondOrderId = ordersList.back().getId();
+    addItemToOrder(ordersList, prodList, secondOrderId, prodList.at(2).getSku(), 1);
+    addItemToOrder(ordersList, prodList, secondOrderId, prodList.at(4).getSku(), 2);
 }
 
 int readMenuOption() {
@@ -168,7 +191,8 @@ void showMenu() {
     << "5. Register customer\n"
     << "6. List customers\n"
     << "7. Find customer by ID\n\n"
-    << "8. Exit\n";
+    << "8. Show order menu\n"
+    << "9. Exit\n";
 }
 
 void showProductOperationsMenu(std::vector<Product> &prodList) {
@@ -497,6 +521,54 @@ void menuArchiveProduct(Product &prodToEdit) {
     }
 }
 
+void displayOrder(const Order& order) {
+    // Calculate before printing so overflow does not leave a partial report.
+    const auto subtotal = order.getSubTotal();
+    const auto discount = order.getDiscountAmount();
+    const auto finalTotal = order.getFinalTotal();
+
+    std::cout << std::string(88, '=') << '\n'
+              << "Order ID: " << order.getId() << '\n'
+              << "Customer ID: " << order.getCustomerId() << '\n';
+
+    std::cout << "Status: ";
+    switch (order.getOrderStatus()) {
+        case OrderStatus::Draft: std::cout << "Draft"; break;
+        case OrderStatus::Confirmed: std::cout << "Confirmed"; break;
+        case OrderStatus::Completed: std::cout << "Completed"; break;
+        case OrderStatus::Cancelled: std::cout << "Cancelled"; break;
+    }
+    std::cout << '\n' << std::string(88, '-') << '\n';
+
+    if (order.getItems().empty()) {
+        std::cout << "No items in this order.\n";
+    }
+    else {
+        std::cout << std::left
+                  << std::setw(8) << "SKU"
+                  << std::setw(25) << "Name"
+                  << std::setw(22) << "Unit Price"
+                  << std::setw(11) << "Quantity"
+                  << std::setw(22) << "Line Subtotal" << '\n';
+        std::cout << std::string(88, '-') << '\n';
+
+        for (const auto& item : order.getItems()) {
+            std::cout << std::left
+                      << std::setw(8) << item.getProductSKU()
+                      << std::setw(25) << item.getProductName()
+                      << std::setw(22) << item.getProductUnitPrice()
+                      << std::setw(11) << item.getOrderQuantity()
+                      << std::setw(22) << item.getTotalPrice() << '\n';
+        }
+    }
+
+    std::cout << std::string(88, '-') << '\n'
+              << std::left << std::setw(22) << "Subtotal:" << subtotal << '\n'
+              << std::setw(22) << "Discount:" << discount << '\n'
+              << std::setw(22) << "Final total:" << finalTotal << '\n'
+              << std::string(88, '=') << "\n\n";
+}
+
 void menuRegisterCustomer(std::vector<Customer> &customersList) {
     std::string name;
     std::cout << "Enter customer name: ";
@@ -574,5 +646,32 @@ void menuFindCustomerById(std::vector<Customer> &customersList) {
     }
     else {
         std::cout << "Customer not found.\n";
+    }
+}
+
+void menuShowOrder(std::vector<Order> &ordersList) {
+    if (ordersList.empty()) {
+        std::cout << "No orders registered.\n";
+        return;
+    }
+
+    std::string orderId;
+    std::cout << "Enter the order ID: ";
+    if (!std::getline(std::cin, orderId)) {
+        std::cerr << "Order display cancelled: input unavailable.\n";
+        return;
+    }
+
+    const Order* foundOrder = getOrderById(ordersList, orderId);
+    if (foundOrder == nullptr) {
+        std::cout << "No order found with ID: " << orderId << '\n';
+        return;
+    }
+
+    try {
+        displayOrder(*foundOrder);
+    }
+    catch (const std::overflow_error& e) {
+        std::cerr << "Cannot display order totals: " << e.what() << '\n';
     }
 }
