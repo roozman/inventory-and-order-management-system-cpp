@@ -82,3 +82,20 @@ std::int64_t Order::getDiscountAmount() const {
 std::int64_t Order::getFinalTotal() const {
     return getSubTotal() - getDiscountAmount();
 }
+
+void Order::confirm(std::vector<Product> &products) {
+    validateOrderForConfirmation(*this, products);
+    getFinalTotal();
+
+    std::vector<Product*> prodsToEdit;
+
+    for (const auto& orderItem : orderItems_) {
+        prodsToEdit.push_back(getProductBySKU(products, orderItem.getProductSKU()));
+    }
+
+    for (std::size_t i = 0; i < prodsToEdit.size(); ++i) {
+        prodsToEdit[i]->decreaseStock(orderItems_[i].getOrderQuantity());
+    }
+
+    orderStatus_ = OrderStatus::Confirmed;
+}

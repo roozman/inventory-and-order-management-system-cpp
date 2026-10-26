@@ -25,4 +25,8 @@ void addItemToOrder(std::vector<Order>& ordersList, std::vector<Product>& produc
 
 void removeItemFromOrder(std::vector<Order>& ordersList, const std::string& orderId, const std::string& sku);
 
+void validateOrderForConfirmation(const Order& order, const std::vector<Product>& products);
+
+void confirmOrder(std::vector<Order>& ordersList, std::vector<Product>& products, const std::string& orderId);
+
 #endif //STORE_ORDER_REGISTRY_H

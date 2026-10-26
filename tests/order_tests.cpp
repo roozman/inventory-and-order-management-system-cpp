@@ -379,6 +379,152 @@ std::string testOrderTotalOverflow(bool finalTotal = false) {
     return "Order total accepted INT64_MAX plus one.";
 }
 
+std::string testConfirmationValidation(const std::string& scenario) {
+    std::vector<Product> products{{"P001", "Notebook", 20000, 5, 1},
+                                  {"P002", "Pencil", 3000, 7, 1}};
+    Order order{"O000001", "C001"};
+    if (scenario != "empty") {
+        order.addItem(products[0], scenario == "exact_stock" ? 5 : 2);
+        order.addItem(products[1], scenario == "insufficient_stock" ? 8 : 7);
+    }
+    // The order retains its snapshot even when its product is absent from this inventory.
+    if (scenario == "missing_product") products.pop_back();
+    const auto productsBefore = products;
+    const auto orderBefore = order;
+    const bool shouldFail = scenario == "empty" || scenario == "missing_product" ||
+                            scenario == "insufficient_stock";
+    bool rejected = false;
+    std::string message;
+    try {
+        validateOrderForConfirmation(order, products);
+    } catch (const std::invalid_argument& error) {
+        if (scenario != "missing_product") return "Unexpected invalid_argument during validation.";
+        rejected = true;
+        message = error.what();
+    } catch (const std::logic_error& error) {
+        if (scenario != "empty" && scenario != "insufficient_stock") {
+            return "Unexpected logic_error during validation.";
+        }
+        rejected = true;
+        message = error.what();
+    }
+    if (rejected != shouldFail) return "Unexpected validation outcome: " + scenario;
+    if (!sameItems(order.getItems(), orderBefore.getItems()) ||
+        order.getOrderStatus() != orderBefore.getOrderStatus() ||
+        order.getId() != orderBefore.getId() || order.getCustomerId() != orderBefore.getCustomerId() ||
+        order.getSubTotal() != orderBefore.getSubTotal() ||
+        order.getDiscountAmount() != orderBefore.getDiscountAmount() ||
+        order.getFinalTotal() != orderBefore.getFinalTotal()) {
+        return "Confirmation validation changed the order.";
+    }
+    if (products.size() != productsBefore.size()) return "Validation changed the inventory size.";
+    for (std::size_t i = 0; i < products.size(); ++i) {
+        const auto& before = productsBefore[i];
+        const auto& after = products[i];
+        if (after.getSku() != before.getSku() || after.getProductName() != before.getProductName() ||
+            after.getUnitPrice() != before.getUnitPrice() ||
+            after.getStockQuantity() != before.getStockQuantity() ||
+            after.getReorderLevel() != before.getReorderLevel() || after.isArchived() != before.isArchived()) {
+            return "Confirmation validation changed inventory.";
+        }
+    }
+    if (shouldFail && message.find("O000001") == std::string::npos) {
+        return "Validation error did not identify the order.";
+    }
+    if ((scenario == "missing_product" || scenario == "insufficient_stock") &&
+        message.find("P002") == std::string::npos) {
+        return "Validation error did not identify the failing second product.";
+    }
+    if (scenario == "insufficient_stock" &&
+        (message.find("Requested: 8") == std::string::npos ||
+         message.find("available: 7") == std::string::npos)) {
+        return "Insufficient-stock error omitted the requested or available quantity.";
+    }
+    return {};
+}
+
+std::string testConfirmOrder(const std::string& scenario) {
+    std::vector<Product> products{{"P001", "Notebook", 20000, 5, 1},
+                                  {"P002", "Pencil", 3000, 7, 1},
+                                  {"P003", "Unrelated product", 100, 9, 0}};
+    std::vector<Order> orders{{"O000001", "C001"}, {"O000002", "C002"}};
+    orders[0].addItem(products[2], 1);
+    if (scenario == "overflow") {
+        products[0].setUnitPrice(std::numeric_limits<std::int64_t>::max());
+        products[1].setUnitPrice(1);
+    }
+    const int firstQuantity = scenario == "exact_stock" ? 5 : scenario == "overflow" ? 1 : 2;
+    const int secondQuantity = scenario == "exact_stock" ? 7 : scenario == "overflow" ? 1 : 3;
+    if (scenario != "empty") {
+        orders[1].addItem(products[0], firstQuantity);
+        orders[1].addItem(products[1], secondQuantity);
+    }
+    // Current product edits must not reprice historical order lines on confirmation.
+    products[0].setProductName("Renamed notebook");
+    products[0].setUnitPrice(50000);
+    if (scenario == "archived") products[1].archive();
+    if (scenario == "insufficient_stock") products[1].decreaseStock(5);
+    if (scenario == "missing_product") products.erase(products.begin() + 1);
+    if (scenario == "repeated") confirmOrder(orders, products, "O000002");
+
+    const auto ordersBefore = orders;
+    const auto productsBefore = products;
+    const bool shouldSucceed = scenario == "valid" || scenario == "exact_stock";
+    bool rejected = false;
+    try {
+        confirmOrder(orders, products, scenario == "missing_order" ? "O000003" : "O000002");
+    } catch (const std::invalid_argument&) {
+        if (scenario != "missing_order" && scenario != "missing_product") {
+            return "Unexpected invalid_argument during confirmation: " + scenario;
+        }
+        rejected = true;
+    } catch (const std::overflow_error&) {
+        if (scenario != "overflow") return "Unexpected overflow_error during confirmation.";
+        rejected = true;
+    } catch (const std::logic_error&) {
+        if (scenario != "empty" && scenario != "archived" &&
+            scenario != "insufficient_stock" && scenario != "repeated") {
+            return "Unexpected logic_error during confirmation: " + scenario;
+        }
+        rejected = true;
+    }
+    if (rejected == shouldSucceed) return "Unexpected confirmation outcome: " + scenario;
+    if (orders.size() != ordersBefore.size() || products.size() != productsBefore.size()) {
+        return "Confirmation changed collection sizes.";
+    }
+    for (std::size_t i = 0; i < orders.size(); ++i) {
+        const auto expectedStatus = shouldSucceed && i == 1
+            ? OrderStatus::Confirmed : ordersBefore[i].getOrderStatus();
+        if (orders[i].getOrderStatus() != expectedStatus ||
+            orders[i].getId() != ordersBefore[i].getId() ||
+            orders[i].getCustomerId() != ordersBefore[i].getCustomerId() ||
+            !sameItems(orders[i].getItems(), ordersBefore[i].getItems())) {
+            return "Confirmation changed unexpected order data or produced the wrong status.";
+        }
+        // Overflowing snapshots cannot be summed; sameItems above still checks every line.
+        if (scenario != "overflow" &&
+            (orders[i].getSubTotal() != ordersBefore[i].getSubTotal() ||
+             orders[i].getDiscountAmount() != ordersBefore[i].getDiscountAmount() ||
+             orders[i].getFinalTotal() != ordersBefore[i].getFinalTotal())) {
+            return "Confirmation changed historical totals.";
+        }
+    }
+    for (std::size_t i = 0; i < products.size(); ++i) {
+        const auto& before = productsBefore[i];
+        const auto& after = products[i];
+        int expectedStock = before.getStockQuantity();
+        if (shouldSucceed && before.getSku() == "P001") expectedStock -= firstQuantity;
+        if (shouldSucceed && before.getSku() == "P002") expectedStock -= secondQuantity;
+        if (after.getStockQuantity() != expectedStock || after.getSku() != before.getSku() ||
+            after.getProductName() != before.getProductName() ||
+            after.getUnitPrice() != before.getUnitPrice() ||
+            after.getReorderLevel() != before.getReorderLevel() || after.isArchived() != before.isArchived()) {
+            return "Confirmation changed unexpected inventory data: " + scenario;
+        }
+    }
+    return {};
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -415,6 +561,20 @@ int main(int argc, char* argv[]) {
         else if (name == "total_boundary") error = testOrderTotalBoundary();
         else if (name == "total_overflow") error = testOrderTotalOverflow();
         else if (name == "final_total_overflow") error = testOrderTotalOverflow(true);
+        else if (name == "validate_valid") error = testConfirmationValidation("valid");
+        else if (name == "validate_exact_stock") error = testConfirmationValidation("exact_stock");
+        else if (name == "validate_empty") error = testConfirmationValidation("empty");
+        else if (name == "validate_missing_product") error = testConfirmationValidation("missing_product");
+        else if (name == "validate_insufficient_stock") error = testConfirmationValidation("insufficient_stock");
+        else if (name == "confirm_valid") error = testConfirmOrder("valid");
+        else if (name == "confirm_exact_stock") error = testConfirmOrder("exact_stock");
+        else if (name == "confirm_empty") error = testConfirmOrder("empty");
+        else if (name == "confirm_missing_order") error = testConfirmOrder("missing_order");
+        else if (name == "confirm_missing_product") error = testConfirmOrder("missing_product");
+        else if (name == "confirm_archived") error = testConfirmOrder("archived");
+        else if (name == "confirm_insufficient_stock") error = testConfirmOrder("insufficient_stock");
+        else if (name == "confirm_overflow") error = testConfirmOrder("overflow");
+        else if (name == "confirm_repeated") error = testConfirmOrder("repeated");
         else if (name == "subtotal") error = testSubtotal();
         else if (name == "zero_price") error = testZeroPrice();
         else if (name == "zero_quantity") error = testInvalidQuantity(0);

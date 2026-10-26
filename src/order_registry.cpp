@@ -93,3 +93,43 @@ void removeItemFromOrder(std::vector<Order> &ordersList, const std::string &orde
     }
     order->removeItem(sku);
 }
+
+void validateOrderForConfirmation(const Order &order, const std::vector<Product> &products) {
+
+    if (order.getOrderStatus() != OrderStatus::Draft) {
+        throw std::logic_error("Cannot confirm order " + order.getId() + ": only Draft orders can be confirmed.");
+    }
+    if (order.getItems().empty()) {
+        throw std::logic_error("Cannot confirm order " + order.getId() + ": the order has no items.");
+    }
+    
+    for (const auto& orderItem : order.getItems()) {
+
+        const Product* foundItemInInventory = getProductBySKU(products, orderItem.getProductSKU());
+
+        if (!foundItemInInventory) {
+            throw std::invalid_argument("Cannot confirm order " + order.getId() + ": product "
+                + orderItem.getProductSKU() + " was not found in inventory.");
+        }
+
+        if (foundItemInInventory->isArchived()) {
+            throw std::logic_error("Cannot confirm order " + order.getId()
+                + " : product " + foundItemInInventory->getSku() + " is archived.");
+        }
+
+        if (orderItem.getOrderQuantity() > foundItemInInventory->getStockQuantity()) {
+            throw std::logic_error("Cannot confirm order " + order.getId() + ": insufficient stock for product "
+                + orderItem.getProductSKU() + ". Requested: " + std::to_string(orderItem.getOrderQuantity())
+                + "; available: " + std::to_string(foundItemInInventory->getStockQuantity()) + ".");
+        }
+    }
+}
+
+void confirmOrder(std::vector<Order> &ordersList, std::vector<Product> &products, const std::string &orderId) {
+    Order* order = getOrderById(ordersList, orderId);
+    if (!order) {
+        throw std::invalid_argument("Order " + orderId + " does not exist.");
+    }
+
+    order->confirm(products);
+}

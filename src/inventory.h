@@ -9,6 +9,7 @@
 // Returns the stored product or nullptr if absent. Adding to the vector may
 // invalidate a previously returned pointer.
 Product* getProductBySKU(std::vector<Product>& products, const std::string& sku);
+const Product* getProductBySKU(const std::vector<Product>& products, const std::string& sku);
 
 // Throws std::invalid_argument if the SKU is already registered, including
 // when the existing product is archived.
