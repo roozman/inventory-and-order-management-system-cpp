@@ -36,6 +36,7 @@ public:
     void confirm(std::vector<Product>& products);
     void cancelDraft();
     void cancelConfirmed(std::vector<Product>& products);
+    void complete();
 };
 
 #endif //STORE_ORDER_H

@@ -33,4 +33,6 @@ void cancelDraftOrder(std::vector<Order>& ordersList, const std::string& orderId
 
 void cancelConfirmedOrder(std::vector<Order>& ordersList, const std::string& orderId, std::vector<Product>& products);
 
+void completeOrder(std::vector<Order>& ordersList, const std::string& orderId);
+
 #endif //STORE_ORDER_REGISTRY_H

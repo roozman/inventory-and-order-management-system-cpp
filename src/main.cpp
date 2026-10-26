@@ -36,9 +36,20 @@ enum class ProductOperationsMenuOptions {
     ReturnToMainMenu = 7
 };
 
+enum class OrdersOperationsMenuOptions {
+    CreateDraftOrder = 1,
+    ShowOrder = 2,
+    AddItem = 3,
+    RemoveItem = 4,
+    ConfirmOrder = 5,
+    CancelOrder = 6,
+    CompleteOrder = 7,
+    ReturnToMainMenu = 8
+};
+
 void showMenu();
 void showProductOperationsMenu(std::vector<Product>& prodList);
-void menuShowOrder(std::vector<Order>& ordersList);
+void showOrderOperationsMenu(std::vector<Order>& orders, std::vector<Customer>& customers, std::vector<Product>& products);
 
 void menuAddProduct(std::vector<Product>& prodList);
 void menuListProducts(const std::vector<Product>& prodList);
@@ -54,6 +65,13 @@ void menuRegisterCustomer(std::vector<Customer>& customersList);
 void menuListCustomers(const std::vector<Customer>& customersList);
 void menuFindCustomerById(std::vector<Customer>& customersList);
 void displayOrder(const Order& order);
+void ordersMenuCreateDraftOrder(std::vector<Order>& orders, std::vector<Customer>& customers);
+void ordersMenuShowOrder(std::vector<Order>& ordersList);
+void ordersMenuAddItem(std::vector<Order>& orders, std::vector<Product>& products);
+void ordersMenuRemoveItem(std::vector<Order>& orders);
+void ordersMenuConfirmOrder(std::vector<Order>& orders, std::vector<Product>& products);
+void ordersMenuCancelOrder(std::vector<Order>& orders, std::vector<Product>& products);
+void ordersMenuCompleteOrder(std::vector<Order>& orders);
 
 bool readInt64(const std::string& prompt, std::int64_t& value);
 bool readInt(const std::string& prompt, int& value);
@@ -99,7 +117,7 @@ int main() {
                 menuFindCustomerById(customersList);
                 break;
             case MainMenuOptions::OpenOrderMenu:
-                menuShowOrder(ordersList);
+                showOrderOperationsMenu(ordersList, customersList, productsList);
                 break;
             case MainMenuOptions::Exit:
                 return 0;
@@ -649,7 +667,7 @@ void menuFindCustomerById(std::vector<Customer> &customersList) {
     }
 }
 
-void menuShowOrder(std::vector<Order> &ordersList) {
+void ordersMenuShowOrder(std::vector<Order> &ordersList) {
     if (ordersList.empty()) {
         std::cout << "No orders registered.\n";
         return;
@@ -673,5 +691,245 @@ void menuShowOrder(std::vector<Order> &ordersList) {
     }
     catch (const std::overflow_error& e) {
         std::cerr << "Cannot display order totals: " << e.what() << '\n';
+    }
+}
+
+void showOrderOperationsMenu(std::vector<Order> &ordersList, std::vector<Customer> &customers, std::vector<Product> &products) {
+
+    while (true) {
+        std::cout
+            <<  std::string(30, '-') << '\n'
+            << "Orders Operations\n"
+            << std::string(30, '-') << '\n'
+            << "1. Create Draft order\n"
+            << "2. Show order\n"
+            << "3. Add item\n"
+            << "4. Remove Item\n"
+            << "5. Confirm order\n"
+            << "6. Cancel order\n"
+            << "7. Complete order\n"
+            << "8. Return to main menu\n";
+
+        int choice = readMenuOption();
+
+        switch (static_cast<OrdersOperationsMenuOptions>(choice)) {
+            case OrdersOperationsMenuOptions::CreateDraftOrder:
+                ordersMenuCreateDraftOrder(ordersList, customers);
+                break;
+            case OrdersOperationsMenuOptions::ShowOrder:
+                ordersMenuShowOrder(ordersList);
+                break;
+            case OrdersOperationsMenuOptions::AddItem:
+                ordersMenuAddItem(ordersList, products);
+                break;
+            case OrdersOperationsMenuOptions::RemoveItem:
+                ordersMenuRemoveItem(ordersList);
+                break;
+            case OrdersOperationsMenuOptions::ConfirmOrder:
+                ordersMenuConfirmOrder(ordersList, products);
+                break;
+            case OrdersOperationsMenuOptions::CancelOrder:
+                ordersMenuCancelOrder(ordersList, products);
+                break;
+            case OrdersOperationsMenuOptions::CompleteOrder:
+                ordersMenuCompleteOrder(ordersList);
+                break;
+            case OrdersOperationsMenuOptions::ReturnToMainMenu:
+                return;
+            default:
+                std::cout << "Invalid option.\n";
+                break;
+        }
+        std::cout << "\nPress Enter to return to the order operations menu...";
+
+        if (std::string input; !std::getline(std::cin, input)) {
+            break;
+        }
+    }
+
+}
+
+void ordersMenuCreateDraftOrder(std::vector<Order> &orders, std::vector<Customer> &customers) {
+    if (customers.empty()) {
+        std::cout << "No customers registered. Register a customer before creating an order.\n";
+        return;
+    }
+
+    std::string customerId;
+    std::cout << "Enter the customer ID: ";
+    if (!std::getline(std::cin, customerId)) {
+        std::cerr << "Order creation cancelled: input unavailable.\n";
+        return;
+    }
+
+    try {
+        addDraftOrder(customers, orders, customerId);
+        std::cout << "Draft order " << orders.back().getId()
+                  << " created successfully for customer " << customerId << ".\n";
+    }
+    catch (const std::invalid_argument& e) {
+        std::cerr << "Cannot create order: " << e.what() << '\n';
+    }
+    catch (const std::out_of_range& e) {
+        std::cerr << "Cannot generate order ID: " << e.what() << '\n';
+    }
+}
+
+void ordersMenuConfirmOrder(std::vector<Order> &orders, std::vector<Product> &products) {
+    if (orders.empty()) {
+        std::cout << "There are no orders to confirm.\n";
+        return;
+    }
+
+    std::string orderId;
+    std::cout << "Enter Order ID: ";
+    if (!std::getline(std::cin, orderId)) {
+        std::cerr << "Order confirmation cancelled: input unavailable.\n";
+        return;
+    }
+
+    try {
+        confirmOrder(orders, products, orderId);
+        std::cout << "Order " << orderId << " confirmed successfully.\n";
+    }
+    catch (const std::logic_error &e) {
+        std::cerr << "Cannot confirm order: " << e.what() << "\n";
+    }
+    catch (const std::overflow_error &e) {
+        std::cerr << "Cannot confirm order: " << e.what() << "\n";
+    }
+}
+
+void ordersMenuCancelOrder(std::vector<Order> &orders, std::vector<Product> &products) {
+    if (orders.empty()) {
+        std::cout << "There are no orders to cancel.\n";
+        return;
+    }
+
+    std::string orderId;
+    std::cout << "Enter Order ID: ";
+    if (!std::getline(std::cin, orderId)) {
+        std::cerr << "Order cancellation stopped: input unavailable.\n";
+        return;
+    }
+
+    const Order* order = getOrderById(orders, orderId);
+    if (!order) {
+        std::cout << "No order found with ID: " << orderId << "\n";
+        return;
+    }
+
+    try {
+        // Each operation enforces its own status rules in the core.
+        if (order->getOrderStatus() == OrderStatus::Draft) {
+            cancelDraftOrder(orders, orderId);
+        }
+        else {
+            cancelConfirmedOrder(orders, orderId, products);
+        }
+        std::cout << "Order " << orderId << " cancelled successfully.\n";
+    }
+    catch (const std::logic_error &e) {
+        std::cerr << "Cannot cancel order: " << e.what() << "\n";
+    }
+    catch (const std::overflow_error &e) {
+        std::cerr << "Cannot cancel order: " << e.what() << "\n";
+    }
+}
+
+void ordersMenuCompleteOrder(std::vector<Order> &orders) {
+    if (orders.empty()) {
+        std::cout << "There are no orders to complete.\n";
+        return;
+    }
+
+    std::string orderId;
+    std::cout << "Enter Order ID: ";
+    if (!std::getline(std::cin, orderId)) {
+        std::cerr << "Order completion cancelled: input unavailable.\n";
+        return;
+    }
+
+    try {
+        completeOrder(orders, orderId);
+        std::cout << "Order " << orderId << " completed successfully.\n";
+    }
+    catch (const std::logic_error &e) {
+        std::cerr << "Cannot complete order: " << e.what() << "\n";
+    }
+}
+
+void ordersMenuRemoveItem(std::vector<Order> &orders) {
+    if (orders.empty()) {
+        std::cout << "There are no orders to remove an item from.\n";
+        return;
+    }
+
+    std::string orderId;
+    std::cout << "Enter Order ID: ";
+    if (!std::getline(std::cin, orderId)) {
+        std::cerr << "Item removal cancelled: input unavailable.\n";
+        return;
+    }
+
+    std::string sku;
+    std::cout << "Enter product SKU to remove from order: ";
+    if (!std::getline(std::cin, sku)) {
+        std::cerr << "Item removal cancelled: input unavailable.\n";
+        return;
+    }
+
+    try {
+        removeItemFromOrder(orders, orderId, sku);
+        std::cout << "Item " << sku << " removed from order " << orderId << "\n";
+    }
+    catch (const std::invalid_argument &e) {
+        std::cerr << "Cannot remove item from order: " << e.what() << "\n";
+    }
+    catch (const std::logic_error &e) {
+        std::cerr << "Cannot remove item from order: " << e.what() << "\n";
+    }
+}
+
+void ordersMenuAddItem(std::vector<Order> &orders, std::vector<Product> &products) {
+    if (orders.empty()) {
+        std::cout << "There are no orders to add item to.\n";
+        return;
+    }
+
+    std::string orderId;
+    std::cout << "Enter Order ID: ";
+    if (!std::getline(std::cin, orderId)) {
+        std::cerr << "Item addition failed: input unavailable.\n";
+        return;
+    }
+
+    //TODO - validate sku input
+    std::string sku;
+    std::cout << "Enter product SKU to add to order: ";
+    if (!std::getline(std::cin, sku)) {
+        std::cerr << "Item addition failed: input unavailable.\n";
+        return;
+
+    }
+
+    int quantity{0};
+    if (!readInt("Enter product quantity to add to order: ", quantity)) {
+        std::cerr << "Item addition cancelled: input unavailable.\n";
+        return;
+    }
+
+    try {
+        addItemToOrder(orders, products, orderId, sku, quantity);
+        std::cout << quantity << " of item " << sku << " added to order " << orderId << "\n";
+    }
+    catch (const std::invalid_argument &e) {
+        std::cerr << "Cannot add item to order: " << e.what() << "\n";
+    }
+    catch (const std::logic_error &e) {
+        std::cerr << "Cannot add item to order: " << e.what() << "\n";
+    }
+    catch (const std::overflow_error &e) {
+        std::cerr << "Cannot add item to order: " << e.what() << "\n";
     }
 }

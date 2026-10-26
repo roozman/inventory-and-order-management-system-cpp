@@ -132,3 +132,10 @@ void Order::cancelConfirmed(std::vector<Product> &products) {
 
     orderStatus_ = OrderStatus::Cancelled;
 }
+
+void Order::complete() {
+    if (orderStatus_ != OrderStatus::Confirmed) {
+        throw std::logic_error("Order is not in confirmed stage.");
+    }
+    orderStatus_ = OrderStatus::Completed;
+}

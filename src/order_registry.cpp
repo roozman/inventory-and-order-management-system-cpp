@@ -153,3 +153,13 @@ void cancelConfirmedOrder(std::vector<Order> &ordersList, const std::string &ord
 
     order->cancelConfirmed(products);
 }
+
+void completeOrder(std::vector<Order> &ordersList, const std::string &orderId) {
+    Order* order = getOrderById(ordersList, orderId);
+
+    if (!order) {
+        throw std::invalid_argument("Order " + orderId + " does not exist.");
+    }
+
+    order->complete();
+}
