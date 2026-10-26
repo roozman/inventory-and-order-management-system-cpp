@@ -34,6 +34,8 @@ public:
     std::int64_t getSubTotal() const;
     std::int64_t getFinalTotal() const;
     void confirm(std::vector<Product>& products);
+    void cancelDraft();
+    void cancelConfirmed(std::vector<Product>& products);
 };
 
 #endif //STORE_ORDER_H

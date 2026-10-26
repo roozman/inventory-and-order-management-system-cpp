@@ -133,3 +133,23 @@ void confirmOrder(std::vector<Order> &ordersList, std::vector<Product> &products
 
     order->confirm(products);
 }
+
+void cancelDraftOrder(std::vector<Order> &ordersList, const std::string &orderId) {
+    Order* order = getOrderById(ordersList, orderId);
+
+    if (!order) {
+        throw std::invalid_argument("Order " + orderId + " does not exist.");
+    }
+
+    order->cancelDraft();
+}
+
+void cancelConfirmedOrder(std::vector<Order> &ordersList, const std::string &orderId, std::vector<Product> &products) {
+    Order* order = getOrderById(ordersList, orderId);
+
+    if (!order) {
+        throw std::invalid_argument("Order " + orderId + " does not exist.");
+    }
+
+    order->cancelConfirmed(products);
+}

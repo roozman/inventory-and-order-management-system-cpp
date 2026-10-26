@@ -45,6 +45,8 @@ public:
 
     // Makes the product read-only; archiving it again throws std::logic_error.
     void archive();
+
+    void restoreStock(int amount);
 };
 
 #endif //STORE_PRODUCT_H

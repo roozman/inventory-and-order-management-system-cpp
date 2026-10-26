@@ -44,6 +44,9 @@ void Order::addItem(const Product &product, int quantity) {
             }
         }
     }
+    if (product.isArchived()) {
+        throw std::logic_error("Product is archived and can not be ordered.");
+    }
 
     OrderItem item(product, quantity);
     orderItems_.push_back(item);
@@ -98,4 +101,34 @@ void Order::confirm(std::vector<Product> &products) {
     }
 
     orderStatus_ = OrderStatus::Confirmed;
+}
+
+void Order::cancelDraft() {
+    if (orderStatus_ != OrderStatus::Draft) {
+        throw std::logic_error("Order is not in draft stage.");
+    }
+    orderStatus_ = OrderStatus::Cancelled;
+}
+
+void Order::cancelConfirmed(std::vector<Product> &products) {
+    if (orderStatus_ != OrderStatus::Confirmed) {
+        throw std::logic_error("Order is not in confirmed stage.");
+    }
+    std::vector<Product*> prodsToEdit;
+    for (const auto& orderItem : orderItems_) {
+        Product* foundProduct = getProductBySKU(products, orderItem.getProductSKU());
+        if (!foundProduct) {
+            throw std::invalid_argument("Product " + orderItem.getProductSKU() + " does not exist.");
+        }
+        if (orderItem.getOrderQuantity() > std::numeric_limits<int>::max() - foundProduct->getStockQuantity()) {
+            throw std::overflow_error("Stock quantity would overflow after cancellation.");
+        }
+        prodsToEdit.push_back(foundProduct);
+    }
+
+    for (std::size_t i = 0; i < prodsToEdit.size(); ++i) {
+        prodsToEdit[i]->restoreStock(orderItems_[i].getOrderQuantity());
+    }
+
+    orderStatus_ = OrderStatus::Cancelled;
 }

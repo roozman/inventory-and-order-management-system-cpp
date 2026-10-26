@@ -29,4 +29,8 @@ void validateOrderForConfirmation(const Order& order, const std::vector<Product>
 
 void confirmOrder(std::vector<Order>& ordersList, std::vector<Product>& products, const std::string& orderId);
 
+void cancelDraftOrder(std::vector<Order>& ordersList, const std::string& orderId);
+
+void cancelConfirmedOrder(std::vector<Order>& ordersList, const std::string& orderId, std::vector<Product>& products);
+
 #endif //STORE_ORDER_REGISTRY_H

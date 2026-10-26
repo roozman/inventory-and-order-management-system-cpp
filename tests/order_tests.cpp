@@ -525,6 +525,186 @@ std::string testConfirmOrder(const std::string& scenario) {
     return {};
 }
 
+std::string testCancelDraftOrder(const std::string& scenario) {
+    std::vector<Product> products{{"P001", "Notebook", 20000, 5, 1},
+                                  {"P002", "Pencil", 3000, 7, 1}};
+    std::vector<Order> orders{{"O000001", "C001"}, {"O000002", "C002"}};
+    orders[0].addItem(products[0], 1);
+    if (scenario != "empty") {
+        orders[1].addItem(products[0], 2);
+        orders[1].addItem(products[1], 3);
+    }
+    const bool cancelledAction = scenario == "repeated" || scenario == "add" ||
+                                 scenario == "remove" || scenario == "confirm";
+    if (cancelledAction) cancelDraftOrder(orders, "O000002");
+    if (scenario == "confirmed") confirmOrder(orders, products, "O000002");
+    // Use a new SKU so duplicate-item rejection cannot mask a missing status guard.
+    if (scenario == "add") products.emplace_back("P003", "Eraser", 1000, 4, 0);
+    const auto ordersBefore = orders;
+    const auto productsBefore = products;
+    const bool shouldSucceed = scenario == "empty" || scenario == "populated";
+    bool rejected = false;
+    try {
+        if (scenario == "add") {
+            addItemToOrder(orders, products, "O000002", "P003", 1);
+        }
+        else if (scenario == "remove") removeItemFromOrder(orders, "O000002", "P001");
+        else if (scenario == "confirm") confirmOrder(orders, products, "O000002");
+        else cancelDraftOrder(orders, scenario == "missing_order" ? "O000003" : "O000002");
+    } catch (const std::invalid_argument& error) {
+        if (scenario != "missing_order") return "Unexpected invalid_argument during cancellation test.";
+        if (std::string{error.what()}.find("O000003") == std::string::npos) {
+            return "Missing-order error did not identify the requested ID.";
+        }
+        rejected = true;
+    } catch (const std::logic_error&) {
+        if (shouldSucceed || scenario == "missing_order") return "Unexpected logic_error during cancellation test.";
+        rejected = true;
+    }
+    if (rejected == shouldSucceed) return "Unexpected cancellation outcome: " + scenario;
+    if (orders.size() != ordersBefore.size()) return "Cancellation changed the order count.";
+    for (std::size_t i = 0; i < orders.size(); ++i) {
+        const auto& before = ordersBefore[i];
+        const auto& after = orders[i];
+        const auto expectedStatus = shouldSucceed && i == 1 ? OrderStatus::Cancelled : before.getOrderStatus();
+        if (after.getOrderStatus() != expectedStatus || after.getId() != before.getId() ||
+            after.getCustomerId() != before.getCustomerId() || !sameItems(after.getItems(), before.getItems()) ||
+            after.getSubTotal() != before.getSubTotal() || after.getDiscountAmount() != before.getDiscountAmount() ||
+            after.getFinalTotal() != before.getFinalTotal()) {
+            return "Cancellation or a rejected action changed unexpected order data.";
+        }
+    }
+    if (products.size() != productsBefore.size()) return "Cancellation changed inventory size.";
+    for (std::size_t i = 0; i < productsBefore.size(); ++i) {
+        const auto& before = productsBefore[i];
+        const auto& after = products[i];
+        if (after.getSku() != before.getSku() || after.getProductName() != before.getProductName() ||
+            after.getUnitPrice() != before.getUnitPrice() || after.getStockQuantity() != before.getStockQuantity() ||
+            after.getReorderLevel() != before.getReorderLevel() || after.isArchived() != before.isArchived()) {
+            return "Cancellation or a rejected action changed inventory.";
+        }
+    }
+    return {};
+}
+
+std::string testCancelConfirmedOrder(const std::string& scenario) {
+    std::vector<Product> products{{"P001", "Notebook", 20000, 5, 1},
+                                  {"P002", "Pencil", 3000, 3, 1},
+                                  {"P003", "Unrelated product", 100, 9, 0}};
+    std::vector<Order> orders{{"O000001", "C001"}, {"O000002", "C002"}};
+    orders[0].addItem(products[2], 1);
+    orders[1].addItem(products[0], 2);
+    orders[1].addItem(products[1], 3);
+    if (scenario != "draft") confirmOrder(orders, products, "O000002");
+    // Product edits after confirmation must not change the recorded order.
+    products[0].setProductName("Updated notebook");
+    products[0].setUnitPrice(50000);
+    if (scenario == "archived") products[1].archive(); // Sold out, then archived.
+    if (scenario == "restocked") products[1].increaseStock(4);
+    if (scenario == "boundary") products[1].increaseStock(std::numeric_limits<int>::max() - 3);
+    if (scenario == "overflow") products[1].increaseStock(std::numeric_limits<int>::max() - 2);
+    if (scenario == "missing_product") products.erase(products.begin() + 1);
+    if (scenario == "repeated") cancelConfirmedOrder(orders, "O000002", products);
+
+    const auto ordersBefore = orders;
+    const auto productsBefore = products;
+    const bool shouldSucceed = scenario == "valid" || scenario == "archived" ||
+                               scenario == "restocked" || scenario == "boundary";
+    bool rejected = false;
+    try {
+        cancelConfirmedOrder(orders, scenario == "missing_order" ? "O000003" : "O000002", products);
+    } catch (const std::invalid_argument&) {
+        if (scenario != "missing_order" && scenario != "missing_product") {
+            return "Unexpected invalid_argument cancelling a Confirmed order.";
+        }
+        rejected = true;
+    } catch (const std::overflow_error&) {
+        if (scenario != "overflow") return "Unexpected cancellation overflow.";
+        rejected = true;
+    } catch (const std::logic_error&) {
+        if (scenario != "draft" && scenario != "repeated") return "Unexpected cancellation logic_error.";
+        rejected = true;
+    }
+    if (rejected == shouldSucceed) return "Unexpected Confirmed cancellation outcome: " + scenario;
+    if (orders.size() != ordersBefore.size() || products.size() != productsBefore.size()) {
+        return "Cancellation changed collection sizes.";
+    }
+    for (std::size_t i = 0; i < orders.size(); ++i) {
+        const auto& before = ordersBefore[i];
+        const auto& after = orders[i];
+        const auto expectedStatus = shouldSucceed && i == 1 ? OrderStatus::Cancelled : before.getOrderStatus();
+        if (after.getOrderStatus() != expectedStatus || after.getId() != before.getId() ||
+            after.getCustomerId() != before.getCustomerId() || !sameItems(after.getItems(), before.getItems()) ||
+            after.getSubTotal() != before.getSubTotal() || after.getDiscountAmount() != before.getDiscountAmount() ||
+            after.getFinalTotal() != before.getFinalTotal()) {
+            return "Cancellation changed unexpected order data or historical amounts.";
+        }
+    }
+    for (std::size_t i = 0; i < products.size(); ++i) {
+        const auto& before = productsBefore[i];
+        const auto& after = products[i];
+        int expectedStock = before.getStockQuantity();
+        if (shouldSucceed && before.getSku() == "P001") expectedStock += 2;
+        if (shouldSucceed && before.getSku() == "P002") expectedStock += 3;
+        if (after.getStockQuantity() != expectedStock || after.getSku() != before.getSku() ||
+            after.getProductName() != before.getProductName() || after.getUnitPrice() != before.getUnitPrice() ||
+            after.getReorderLevel() != before.getReorderLevel() || after.isArchived() != before.isArchived()) {
+            return "Cancellation restored incorrect stock or changed other product data: " + scenario;
+        }
+    }
+    return {};
+}
+
+std::string testAddArchivedProduct(bool throughRegistry) {
+    std::vector<Product> products{{"P001", "Notebook", 20000, 5, 1},
+                                  {"P002", "Pencil", 3000, 7, 1}};
+    std::vector<Order> orders{{"O000001", "C001"}};
+    orders[0].addItem(products[0], 2);
+    products[1].archive();
+    const auto before = orders[0].getItems();
+    bool rejected = false;
+    try {
+        // A different SKU and valid quantity isolate the archive rule.
+        if (throughRegistry) addItemToOrder(orders, products, "O000001", "P002", 1);
+        else orders[0].addItem(products[1], 1);
+    } catch (const std::invalid_argument&) {
+        return "Expected the archive logic_error, not invalid_argument.";
+    } catch (const std::logic_error&) {
+        rejected = true;
+    }
+    if (!rejected) return "An archived product was added to a Draft.";
+    if (orders.size() != 1 || !sameItems(before, orders[0].getItems()) ||
+        orders[0].getOrderStatus() != OrderStatus::Draft || orders[0].getSubTotal() != 40000 ||
+        orders[0].getDiscountAmount() != 0 || orders[0].getFinalTotal() != 40000) {
+        return "Rejected archived-product addition changed the order.";
+    }
+    return products[0].getStockQuantity() == 5 && products[1].getStockQuantity() == 7 &&
+           !products[0].isArchived() && products[1].isArchived()
+        ? "" : "Rejected archived-product addition changed stock or archive status.";
+}
+
+std::string testArchiveDraftItemRemoval() {
+    std::vector<Product> products{{"P001", "Notebook", 20000, 5, 1},
+                                  {"P002", "Pencil", 3000, 7, 1}};
+    std::vector<Order> orders{{"O000001", "C001"}};
+    addItemToOrder(orders, products, "O000001", "P001", 2);
+    addItemToOrder(orders, products, "O000001", "P002", 3);
+    const auto before = orders[0].getItems();
+    products[1].archive();
+    if (!sameItems(before, orders[0].getItems()) || orders[0].getFinalTotal() != 49000) {
+        return "Archiving changed existing Draft snapshots or totals.";
+    }
+    removeItemFromOrder(orders, "O000001", "P002");
+    const std::vector<OrderItem> expected{before[0]};
+    if (!sameItems(expected, orders[0].getItems()) || orders[0].getSubTotal() != 40000 ||
+        orders[0].getFinalTotal() != 40000 || orders[0].getOrderStatus() != OrderStatus::Draft) {
+        return "Removing an archived Draft item changed unexpected order data.";
+    }
+    return products[0].getStockQuantity() == 5 && products[1].getStockQuantity() == 7 &&
+           !products[0].isArchived() && products[1].isArchived()
+        ? "" : "Removing an archived Draft item changed stock or archive status.";
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -575,6 +755,26 @@ int main(int argc, char* argv[]) {
         else if (name == "confirm_insufficient_stock") error = testConfirmOrder("insufficient_stock");
         else if (name == "confirm_overflow") error = testConfirmOrder("overflow");
         else if (name == "confirm_repeated") error = testConfirmOrder("repeated");
+        else if (name == "cancel_draft_empty") error = testCancelDraftOrder("empty");
+        else if (name == "cancel_draft_populated") error = testCancelDraftOrder("populated");
+        else if (name == "cancel_draft_missing_order") error = testCancelDraftOrder("missing_order");
+        else if (name == "cancel_draft_repeated") error = testCancelDraftOrder("repeated");
+        else if (name == "cancel_draft_confirmed") error = testCancelDraftOrder("confirmed");
+        else if (name == "cancelled_reject_add") error = testCancelDraftOrder("add");
+        else if (name == "cancelled_reject_remove") error = testCancelDraftOrder("remove");
+        else if (name == "cancelled_reject_confirm") error = testCancelDraftOrder("confirm");
+        else if (name == "cancel_confirmed_valid") error = testCancelConfirmedOrder("valid");
+        else if (name == "cancel_confirmed_archived") error = testCancelConfirmedOrder("archived");
+        else if (name == "cancel_confirmed_restocked") error = testCancelConfirmedOrder("restocked");
+        else if (name == "cancel_confirmed_boundary") error = testCancelConfirmedOrder("boundary");
+        else if (name == "cancel_confirmed_overflow") error = testCancelConfirmedOrder("overflow");
+        else if (name == "cancel_confirmed_missing_order") error = testCancelConfirmedOrder("missing_order");
+        else if (name == "cancel_confirmed_missing_product") error = testCancelConfirmedOrder("missing_product");
+        else if (name == "cancel_confirmed_draft") error = testCancelConfirmedOrder("draft");
+        else if (name == "cancel_confirmed_repeated") error = testCancelConfirmedOrder("repeated");
+        else if (name == "add_archived_direct") error = testAddArchivedProduct(false);
+        else if (name == "add_archived_registry") error = testAddArchivedProduct(true);
+        else if (name == "archive_draft_item_removal") error = testArchiveDraftItemRemoval();
         else if (name == "subtotal") error = testSubtotal();
         else if (name == "zero_price") error = testZeroPrice();
         else if (name == "zero_quantity") error = testInvalidQuantity(0);

@@ -124,3 +124,14 @@ void Product::ensureActive() const {
         );
     }
 }
+
+void Product::restoreStock(int amount) {
+    if (amount < 1) {
+        throw std::invalid_argument("Stock increase must be a positive integer.");
+    }
+    // Check before addition so signed overflow never occurs.
+    if (amount > std::numeric_limits<int>::max() - stockQuantity_) {
+        throw std::overflow_error("Stock quantity overflow.");
+    }
+    stockQuantity_ += amount;
+}
