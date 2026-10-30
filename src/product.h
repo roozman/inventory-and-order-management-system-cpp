@@ -11,6 +11,7 @@ private:
     int stockQuantity_;
     int reorderLevel_;
     bool archived_;
+    int discount_;
 
     // A valid name contains at least one non-whitespace character.
     static bool productNameValidator(const std::string& name);
@@ -27,12 +28,14 @@ public:
     std::int64_t getUnitPrice() const;
     int getStockQuantity() const;
     int getReorderLevel() const;
+    int getDiscount() const;
 
     // Edits require an active product; archived products throw std::logic_error.
     // Invalid names and negative values throw std::invalid_argument.
     void setProductName(const std::string& productName);
     void setUnitPrice(std::int64_t unitPrice);
     void setReorderLevel(int reorderLevel);
+    void setDiscount(int discount);
 
     // Amount must be positive. Increasing checks for int overflow; decreasing
     // rejects an amount greater than the current stock.
@@ -43,9 +46,12 @@ public:
     bool isLowStock() const;
     bool isArchived() const;
 
-    // Makes the product read-only; archiving it again throws std::logic_error.
+    // Prevents ordinary edits and manual stock changes; cancellation may still restore stock.
+    // Archiving it again throws std::logic_error.
     void archive();
 
+    // Restores a positive quantity on order cancellation, including for archived products.
+    // Checks overflow and preserves archive status.
     void restoreStock(int amount);
 };
 

@@ -812,6 +812,190 @@ std::string testConfirmedOrderRejectsEdit(bool addItem) {
     return {};
 }
 
+std::string testItemDiscount(std::int64_t price, int quantity, int percentage,
+                             std::int64_t gross, std::int64_t discount, std::int64_t finalTotal) {
+    Product product{"P001", "Notebook", price, 10, 1};
+    product.setDiscount(percentage);
+    const OrderItem item{product, quantity};
+    return item.getDiscount() == percentage && item.getTotalPrice() == gross &&
+           item.getDiscountAmount() == discount && item.getFinalTotal() == finalTotal
+        ? "" : "Item gross, captured percentage, discount, or final total is incorrect.";
+}
+
+std::string testDiscountSnapshot() {
+    std::vector<Product> products{{"P001", "Notebook", 101, 10, 1}};
+    products[0].setDiscount(10);
+    Order order{"O000001", "C001"};
+    order.addItem(products[0], 3);
+    products[0].setDiscount(50);
+    products[0].setUnitPrice(200);
+    const OrderItem fresh{products[0], 3};
+    order.confirm(products);
+    order.complete();
+    const auto& saved = order.getItems()[0];
+    return saved.getProductUnitPrice() == 101 && saved.getDiscount() == 10 &&
+           saved.getTotalPrice() == 303 && saved.getDiscountAmount() == 30 &&
+           saved.getFinalTotal() == 273 && order.getFinalTotal() == 273 &&
+           fresh.getDiscount() == 50 && fresh.getFinalTotal() == 300
+        ? "" : "Product edits or order transitions changed the saved discount snapshot.";
+}
+
+std::string testMixedDiscountTotals() {
+    Product first{"P001", "Notebook", 101, 10, 1};
+    Product second{"P002", "Pen", 55, 10, 1};
+    Product third{"P003", "Eraser", 20, 10, 1};
+    first.setDiscount(10);
+    second.setDiscount(100);
+    Order order{"O000001", "C001"};
+    order.addItem(first, 3);
+    order.addItem(second, 2);
+    order.addItem(third, 2);
+    if (order.getSubTotal() != 453 || order.getDiscountAmount() != 140 ||
+        order.getFinalTotal() != 313) return "Mixed-discount order totals are incorrect.";
+    order.removeItem("P002");
+    if (order.getSubTotal() != 343 || order.getDiscountAmount() != 30 ||
+        order.getFinalTotal() != 313) return "Removing a discounted line left stale totals.";
+    order.removeItem("P001");
+    order.removeItem("P003");
+    return order.getSubTotal() == 0 && order.getDiscountAmount() == 0 &&
+           order.getFinalTotal() == 0 ? "" : "Removing all lines did not reset totals.";
+}
+
+std::string testDiscountLineRounding() {
+    Product first{"P001", "Notebook", 15, 10, 1};
+    Product second{"P002", "Pen", 15, 10, 1};
+    first.setDiscount(10);
+    second.setDiscount(10);
+    Order order{"O000001", "C001"};
+    order.addItem(first, 1);
+    order.addItem(second, 1);
+    return order.getSubTotal() == 30 && order.getDiscountAmount() == 2 &&
+           order.getFinalTotal() == 28
+        ? "" : "Order must sum discounts rounded down separately for each line.";
+}
+
+std::string testDiscountTotalOverflow() {
+    Product first{"P001", "Notebook", std::numeric_limits<std::int64_t>::max(), 1, 0};
+    Product second{"P002", "Pen", 1, 1, 0};
+    first.setDiscount(100);
+    second.setDiscount(100);
+    Order order{"O000001", "C001"};
+    order.addItem(first, 1);
+    if (order.getDiscountAmount() != std::numeric_limits<std::int64_t>::max() ||
+        order.getFinalTotal() != 0) return "Maximum representable discount was rejected.";
+    order.addItem(second, 1);
+    try {
+        order.getDiscountAmount();
+        return "Overflowing discount sum was accepted.";
+    } catch (const std::overflow_error&) {}
+    try {
+        order.getFinalTotal();
+        return "Full discount hid an overflowing gross order total.";
+    } catch (const std::overflow_error&) {}
+    return {};
+}
+
+std::string testCustomerHistory(const std::string& scenario) {
+    std::vector<Order> orders;
+    if (scenario == "empty") {
+        return getCustomerOrders(orders, "C001").empty() ? "" : "Empty registry returned history.";
+    }
+    orders.emplace_back("O000001", "C002");
+    orders.emplace_back("O000002", "C001");
+    orders.emplace_back("O000003", "C002");
+    orders.emplace_back("O000004", "C001");
+    if (scenario == "missing") {
+        return getCustomerOrders(orders, "C003").empty() ? "" : "Unknown customer returned other orders.";
+    }
+    std::vector<Product> products{{"P001", "Notebook", 101, 10, 1}};
+    products[0].setDiscount(10);
+    orders[1].addItem(products[0], 3);
+    orders[1].confirm(products);
+    orders[1].complete();
+    orders[3].cancelDraft();
+    products[0].setUnitPrice(200);
+    products[0].setDiscount(50);
+    const auto history = getCustomerOrders(orders, "C001");
+    return history.size() == 2 && history[0] == &orders[1] && history[1] == &orders[3] &&
+           history[0]->getFinalTotal() == 273 &&
+           history[0]->getItems()[0].getProductUnitPrice() == 101 &&
+           history[0]->getItems()[0].getDiscount() == 10 &&
+           history[1]->getOrderStatus() == OrderStatus::Cancelled
+        ? "" : "History mixed customers, lost orders, or changed historical amounts.";
+}
+
+std::string testSalesSummary(const std::string& scenario) {
+    std::vector<Order> orders;
+    std::vector<Product> products{{"P001", "Notebook", 101, 100, 1}};
+    products[0].setDiscount(10);
+    if (scenario != "empty") {
+        for (int i = 1; i <= 5; ++i) {
+            orders.emplace_back(generateOrderID(i), i % 2 == 0 ? "C002" : "C001");
+            orders.back().addItem(products[0], i);
+        }
+        orders[1].confirm(products);
+        orders[2].cancelDraft();
+        orders[3].confirm(products);
+        orders[3].complete();
+        orders[4].confirm(products);
+        orders[4].complete();
+        if (scenario == "no_sales") orders.erase(orders.begin() + 3, orders.end());
+    }
+    products[0].setUnitPrice(999);
+    products[0].setDiscount(100);
+    const int stockBefore = products[0].getStockQuantity();
+    const auto summary = getSalesSummary(orders);
+    const auto repeated = getSalesSummary(orders);
+    if (scenario == "mixed") {
+        if (summary.completedOrders != 2 || summary.subtotal != 909 ||
+            summary.discount != 90 || summary.revenue != 819) {
+            return "Sales summary did not include only Completed historical amounts.";
+        }
+        if (orders[0].getOrderStatus() != OrderStatus::Draft ||
+            orders[1].getOrderStatus() != OrderStatus::Confirmed ||
+            orders[2].getOrderStatus() != OrderStatus::Cancelled ||
+            orders[3].getOrderStatus() != OrderStatus::Completed ||
+            orders[4].getOrderStatus() != OrderStatus::Completed) {
+            return "Reporting changed order statuses.";
+        }
+    } else if (summary.completedOrders != 0 || summary.subtotal != 0 ||
+               summary.discount != 0 || summary.revenue != 0) {
+        return "No-sales summary must contain all zeros.";
+    }
+    return products[0].getStockQuantity() == stockBefore &&
+           repeated.completedOrders == summary.completedOrders &&
+           repeated.subtotal == summary.subtotal && repeated.discount == summary.discount &&
+           repeated.revenue == summary.revenue
+        ? "" : "Repeated reporting changed data or totals.";
+}
+
+std::string testSalesSummaryBoundary(bool overflow, int percentage) {
+    const auto maxAmount = std::numeric_limits<std::int64_t>::max();
+    std::vector<Product> products{{"P001", "Notebook", maxAmount - 1, 1, 0},
+                                  {"P002", "Pen", overflow ? 2 : 1, 1, 0}};
+    std::vector<Order> orders{{"O000001", "C001"}, {"O000002", "C002"}};
+    for (std::size_t i = 0; i < orders.size(); ++i) {
+        products[i].setDiscount(percentage);
+        orders[i].addItem(products[i], 1);
+        orders[i].confirm(products);
+        orders[i].complete();
+    }
+    try {
+        const auto summary = getSalesSummary(orders);
+        if (overflow) return "Sales summary accepted an overflowing sum.";
+        return summary.completedOrders == 2 && summary.subtotal == maxAmount &&
+               summary.discount == (percentage == 100 ? maxAmount : 0) &&
+               summary.revenue == (percentage == 100 ? 0 : maxAmount)
+            ? "" : "Sales summary rejected or miscalculated the exact numeric boundary.";
+    } catch (const std::overflow_error&) {
+        if (!overflow) return "Representable sales total incorrectly overflowed.";
+        return orders[0].getOrderStatus() == OrderStatus::Completed &&
+               orders[1].getOrderStatus() == OrderStatus::Completed &&
+               products[0].getStockQuantity() == 0 && products[1].getStockQuantity() == 0
+            ? "" : "Failed report mutated orders or stock.";
+    }
+}
+
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -901,6 +1085,27 @@ int main(int argc, char* argv[]) {
         else if (name == "subtotal_boundary") error = testSubtotalBoundary();
         else if (name == "overflow") error = testOverflow();
         else if (name == "snapshot") error = testSnapshot();
+        else if (name == "discount_zero") error = testItemDiscount(101, 3, 0, 303, 0, 303);
+        else if (name == "discount_full") error = testItemDiscount(101, 3, 100, 303, 303, 0);
+        else if (name == "discount_rounding") error = testItemDiscount(19, 3, 10, 57, 5, 52);
+        else if (name == "discount_below_rial") error = testItemDiscount(1, 1, 99, 1, 0, 1);
+        else if (name == "discount_zero_price") error = testItemDiscount(0, 3, 50, 0, 0, 0);
+        else if (name == "discount_large") error = testItemDiscount(std::numeric_limits<std::int64_t>::max(), 1, 99, std::numeric_limits<std::int64_t>::max(), 9131138316486228048LL, 92233720368547759LL);
+        else if (name == "discount_max_full") error = testItemDiscount(std::numeric_limits<std::int64_t>::max(), 1, 100, std::numeric_limits<std::int64_t>::max(), std::numeric_limits<std::int64_t>::max(), 0);
+        else if (name == "discount_snapshot") error = testDiscountSnapshot();
+        else if (name == "discount_mixed_totals") error = testMixedDiscountTotals();
+        else if (name == "discount_line_rounding") error = testDiscountLineRounding();
+        else if (name == "discount_total_overflow") error = testDiscountTotalOverflow();
+        else if (name == "history_empty") error = testCustomerHistory("empty");
+        else if (name == "history_missing") error = testCustomerHistory("missing");
+        else if (name == "history_filtered") error = testCustomerHistory("filtered");
+        else if (name == "sales_empty") error = testSalesSummary("empty");
+        else if (name == "sales_no_sales") error = testSalesSummary("no_sales");
+        else if (name == "sales_mixed") error = testSalesSummary("mixed");
+        else if (name == "sales_boundary") error = testSalesSummaryBoundary(false, 0);
+        else if (name == "sales_discount_boundary") error = testSalesSummaryBoundary(false, 100);
+        else if (name == "sales_overflow") error = testSalesSummaryBoundary(true, 0);
+        else if (name == "sales_discount_overflow") error = testSalesSummaryBoundary(true, 100);
         else error = "Unknown test name: " + name;
     } catch (const std::exception& exception) {
         error = "Unexpected exception: " + std::string{exception.what()};

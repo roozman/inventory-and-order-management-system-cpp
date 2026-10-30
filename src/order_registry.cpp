@@ -4,7 +4,41 @@
 #include <stdexcept>
 #include <cstdint>
 #include <sstream>
+#include <limits>
 #include<iomanip>
+
+std::vector<const Order*> getCustomerOrders(const std::vector<Order>& ordersList, const std::string& customerId) {
+    std::vector<const Order*> customerOrders;
+    for (const auto& order : ordersList) {
+        if (order.getCustomerId() == customerId) {
+            customerOrders.push_back(&order);
+        }
+    }
+    return customerOrders;
+}
+
+SalesSummary getSalesSummary(const std::vector<Order>& ordersList) {
+    SalesSummary summary;
+    const auto maxAmount = std::numeric_limits<std::int64_t>::max();
+    for (const auto& order : ordersList) {
+        if (order.getOrderStatus() != OrderStatus::Completed) {
+            continue;
+        }
+        const auto subtotal = order.getSubTotal();
+        const auto discount = order.getDiscountAmount();
+        const auto revenue = order.getFinalTotal();
+        if (subtotal > maxAmount - summary.subtotal ||
+            discount > maxAmount - summary.discount ||
+            revenue > maxAmount - summary.revenue) {
+            throw std::overflow_error("Sales summary total overflow.");
+        }
+        ++summary.completedOrders;
+        summary.subtotal += subtotal;
+        summary.discount += discount;
+        summary.revenue += revenue;
+    }
+    return summary;
+}
 
 Order* getOrderById(std::vector<Order> &ordersList, const std::string &orderId) {
     if (ordersList.empty()) {

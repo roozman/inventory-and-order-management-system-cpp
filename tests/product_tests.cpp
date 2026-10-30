@@ -65,6 +65,40 @@ std::string testArchiveProduct();
 std::string testArchiveProductTwice();
 std::string testArchivedProductRejectsModification(const std::string& operation);
 
+std::string testDiscountDefault() {
+    const Product product{"P001", "Cake", 101, 10, 2};
+    return product.getDiscount() == 0 ? "" : "New product discount must be zero.";
+}
+
+std::string testDiscountValid(int percentage) {
+    Product product{"P001", "Cake", 101, 10, 2};
+    product.setDiscount(25);
+    product.setDiscount(percentage);
+    return product.getDiscount() == percentage && product.getUnitPrice() == 101 &&
+           product.getStockQuantity() == 10 && product.getReorderLevel() == 2 &&
+           !product.isArchived()
+        ? "" : "Setting discount changed the base price or other product fields.";
+}
+
+std::string testDiscountRejected(int percentage, bool archived) {
+    Product product{"P001", "Cake", 101, 10, 2};
+    product.setDiscount(25);
+    if (archived) product.archive();
+    bool rejected = false;
+    try {
+        product.setDiscount(percentage);
+    } catch (const std::invalid_argument&) {
+        if (archived) return "Archived edit threw the range-validation exception.";
+        rejected = true;
+    } catch (const std::logic_error&) {
+        if (!archived) return "Invalid percentage threw the wrong exception.";
+        rejected = true;
+    }
+    return rejected && product.getDiscount() == 25 && product.getUnitPrice() == 101 &&
+           product.isArchived() == archived
+        ? "" : "Rejected discount edit did not preserve the product.";
+}
+
 int main(int argc, char* argv[])
 {
     if (argc != 2) {
@@ -76,7 +110,14 @@ int main(int argc, char* argv[])
 
     std::string errors;
 
-    if (testName == "valid") {
+    if (testName == "discount_default") errors = testDiscountDefault();
+    else if (testName == "discount_zero") errors = testDiscountValid(0);
+    else if (testName == "discount_partial") errors = testDiscountValid(35);
+    else if (testName == "discount_full") errors = testDiscountValid(100);
+    else if (testName == "discount_negative") errors = testDiscountRejected(-1, false);
+    else if (testName == "discount_above_max") errors = testDiscountRejected(101, false);
+    else if (testName == "discount_archived") errors = testDiscountRejected(50, true);
+    else if (testName == "valid") {
         errors = testConstructorMatchingValues("P001", "biscuit", 20000, 23, 5);
     }
     else if (testName == "empty_name") {

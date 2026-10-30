@@ -6,11 +6,11 @@ This is a learning project focused on object-oriented design, standard-library c
 
 ## Current Status
 
-The project is under development. Product, inventory, and customer operations are available through the console. The core supports creating Draft orders and adding/removing items, preserving historical names and prices, and calculating totals with overflow checks. The console can look up and display an order, but creating and editing orders through the menu is still pending.
+The project is under development. Product, inventory, customer, and order operations are available through the console. Orders support Draft creation, item editing, confirmation, cancellation, and completion, with stock updates and historical product names, prices, and discounts.
 
-Order confirmation, cancellation, completion, product discounts, sales reporting, and persistence remain to be implemented. Discounts currently return zero, so the final total equals the subtotal. Data exists only in memory and is lost when the application exits.
+Product discounts range from 0% to 100%, with each line discount rounded down to whole rials. Reports include individual order details, all orders, customer history, and Completed-order sales totals. Monetary calculations check for overflow. Data exists only in memory and is lost when the application exits.
 
-The current milestone is task 30: order calculations and display. Next is validating confirmation conditions without changing stock.
+Section 9 is complete through task 44. Next is section 10: designing the file format and implementing persistence.
 
 ## Progress Checklist
 
@@ -31,28 +31,30 @@ The current milestone is task 30: order calculations and display. Next is valida
 - [x] Create Draft orders for existing customers with generated unique order IDs through core functions.
 - [x] Add existing products with positive quantities and remove items through core functions, without changing stock; reject repeated SKUs within an order.
 - [x] Preserve historical product names and base prices in order items.
-- [x] Calculate line and order subtotals with overflow checks; expose zero discount and the final total, including zero totals for an empty Draft.
+- [x] Calculate line and order subtotals, discounts, and final totals with rounding and overflow checks, including zero totals for an empty Draft.
 - [x] Find an order by ID through the console and display its customer ID, status, historical item details, and totals.
-- [x] Provide automated product, inventory, customer, Draft-item, and order-total tests registered with CTest. The last full run passed all 120 tests.
+- [x] Provide automated product, inventory, customer, order-transition, discount, history, and sales-summary tests registered with CTest. The last full run passed all 194 tests.
+
+- [x] Connect Draft creation and item addition/removal to the console menu.
+- [x] Set and clear product discounts from 0% to 100%, applied equally to all customers.
+- [x] Preserve discount percentages and discounted amounts in historical item snapshots.
+- [x] Confirm orders only when every item has sufficient stock, reducing stock exactly once without partial changes.
+- [x] Cancel draft orders without changing stock and restore confirmed-order stock exactly once on cancellation.
+- [x] Complete confirmed orders and enforce all permitted order-state transitions.
+- [x] Coordinate product archiving with open orders and stock restoration.
+- [x] List all orders and display a selected customer's order history.
+- [x] Report Completed-order counts, gross subtotals, total discounts, and net sales revenue.
 
 ### Yet to Be Implemented
 
-- [ ] Connect Draft creation and item addition/removal to the console menu.
-- [ ] Set and clear product discounts from 0% to 100%, applied equally to all customers.
-- [ ] Calculate actual line discounts and discounted order totals with integer rounding and overflow checks.
-- [ ] Extend historical item snapshots to preserve discount percentages and discounted amounts.
-- [ ] Confirm orders only when every item has sufficient stock, reducing stock exactly once without partial changes.
-- [ ] Cancel draft orders without changing stock and restore confirmed-order stock exactly once on cancellation.
-- [ ] Complete confirmed orders and enforce all permitted order-state transitions.
-- [ ] Coordinate product archiving with open orders and stock restoration.
-- [ ] List all orders and display a selected customer's order history.
-- [ ] Report completed-order counts, total discounts, and net sales revenue.
 - [ ] Save and load products, customers, orders, and historical amounts using a documented text format.
 - [ ] Handle malformed files and save/load failures without silently losing valid data.
-- [ ] Expand automated tests to cover order transitions, rejection of item edits outside Draft status, discounts, reports, and persistence.
+- [ ] Expand automated tests to cover persistence.
 - [ ] Provide loadable sample data files, build/run/test instructions, and a complete console workflow demonstration.
 
 ## Temporary Startup Data
+
+The orders submenu includes option 8 to list all orders, option 9 for customer history, and option 10 for the sales summary. Option 2 displays a single order's item details; option 11 returns to the main menu.
 
 `createTestingData()` currently generates five products, five customers, and two Draft orders at every launch. Each order contains two products; adding these Draft items does not reserve or reduce stock. This is temporary in-memory demonstration data, not saved data.
 

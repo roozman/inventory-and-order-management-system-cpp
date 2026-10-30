@@ -66,7 +66,7 @@ void Order::removeItem(const std::string &sku) {
 }
 
 std::int64_t Order::getSubTotal() const {
-    int64_t subTotal{0};
+    std::int64_t subTotal{0};
 
     for (const auto& item : orderItems_) {
         if (item.getTotalPrice() > std::numeric_limits<std::int64_t>::max() - subTotal) {
@@ -79,7 +79,16 @@ std::int64_t Order::getSubTotal() const {
 }
 
 std::int64_t Order::getDiscountAmount() const {
-    return 0;
+    std::int64_t totalDiscount{0};
+
+    for (const auto& item : orderItems_) {
+        if (item.getDiscountAmount() > std::numeric_limits<std::int64_t>::max() - totalDiscount) {
+            throw std::overflow_error("Total discount amount overflowed.");
+        }
+        totalDiscount += item.getDiscountAmount();
+    }
+
+    return totalDiscount;
 }
 
 std::int64_t Order::getFinalTotal() const {

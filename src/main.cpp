@@ -32,8 +32,9 @@ enum class ProductOperationsMenuOptions {
     EditProductReorderLevel = 3,
     IncreaseStock = 4,
     DecreaseStock = 5,
-    ArchiveProduct = 6,
-    ReturnToMainMenu = 7
+    SetDiscount = 6,
+    ArchiveProduct = 7,
+    ReturnToMainMenu = 8
 };
 
 enum class OrdersOperationsMenuOptions {
@@ -44,7 +45,10 @@ enum class OrdersOperationsMenuOptions {
     ConfirmOrder = 5,
     CancelOrder = 6,
     CompleteOrder = 7,
-    ReturnToMainMenu = 8
+    ListOrders = 8,
+    CustomerHistory = 9,
+    SalesSummary = 10,
+    ReturnToMainMenu = 11
 };
 
 void showMenu();
@@ -59,6 +63,7 @@ void menuEditProductUnitPrice(Product& prodToEdit);
 void menuEditProductReorderLevel(Product& prodToEdit);
 void menuIncreaseProductStock(Product& prodToEdit);
 void menuDecreaseProductStock(Product& prodToEdit);
+void menuSetProductDiscount(Product& prodToEdit);
 void displayLowStockProducts(const std::vector<const Product*>& lowStockProds);
 void menuArchiveProduct(Product& prodToEdit);
 void menuRegisterCustomer(std::vector<Customer>& customersList);
@@ -72,6 +77,11 @@ void ordersMenuRemoveItem(std::vector<Order>& orders);
 void ordersMenuConfirmOrder(std::vector<Order>& orders, std::vector<Product>& products);
 void ordersMenuCancelOrder(std::vector<Order>& orders, std::vector<Product>& products);
 void ordersMenuCompleteOrder(std::vector<Order>& orders);
+void ordersMenuListOrders(const std::vector<Order>& orders);
+void ordersMenuCustomerHistory(const std::vector<Order>& orders, std::vector<Customer>& customers);
+void ordersMenuSalesSummary(const std::vector<Order>& orders);
+void displayOrders(const std::vector<const Order*>& orders);
+std::string getOrderStatusName(OrderStatus status);
 
 bool readInt64(const std::string& prompt, std::int64_t& value);
 bool readInt(const std::string& prompt, int& value);
@@ -242,8 +252,9 @@ void showProductOperationsMenu(std::vector<Product> &prodList) {
             << "3. Edit product reorder level\n"
             << "4. Increase stock\n"
             << "5. Decrease stock\n"
-            << "6. Archive product\n"
-            << "7. Return to main menu\n";
+            << "6. Edit product discount\n"
+            << "7. Archive product\n"
+            << "8. Return to main menu\n";
 
         int choice = readMenuOption();
 
@@ -262,6 +273,9 @@ void showProductOperationsMenu(std::vector<Product> &prodList) {
                 break;
             case ProductOperationsMenuOptions::DecreaseStock:
                 menuDecreaseProductStock(*prodToEdit);
+                break;
+            case ProductOperationsMenuOptions::SetDiscount:
+                menuSetProductDiscount(*prodToEdit);
                 break;
             case ProductOperationsMenuOptions::ArchiveProduct:
                 menuArchiveProduct(*prodToEdit);
@@ -386,18 +400,20 @@ void menuListProducts(const std::vector<Product> &prodList) {
     std::cout << std::left
               << std::setw(8)  << "SKU"
               << std::setw(25) << "Name"
-              << std::setw(15) << "Unit Price"
+              << std::setw(22) << "Unit Price (rials)"
+              << std::setw(14) << "Discount (%)"
               << std::setw(12) << "Stock"
               << std::setw(17) << "Reorder Level"
               << std::setw(15) << "Stock Status"
               << "Availability\n";
 
-    std::cout << std::string(105, '-') << '\n';
+    std::cout << std::string(126, '-') << '\n';
     for (const auto& product : prodList) {
         std::cout << std::left
                   << std::setw(8)  << product.getSku()
                   << std::setw(25) << product.getProductName()
-                  << std::setw(15) << product.getUnitPrice()
+                  << std::setw(22) << product.getUnitPrice()
+                  << std::setw(14) << product.getDiscount()
                   << std::setw(12) << product.getStockQuantity()
                   << std::setw(17) << product.getReorderLevel()
                   << std::setw(15)
@@ -405,7 +421,7 @@ void menuListProducts(const std::vector<Product> &prodList) {
                   << (product.isArchived() ? "Archived" : "Active")
                   << '\n';
     }
-    std::cout << std::string(105, '-') << "\n\n";
+    std::cout << std::string(126, '-') << "\n\n";
 }
 
 void menuEditProductName(Product &prodToEdit) {
@@ -545,18 +561,12 @@ void displayOrder(const Order& order) {
     const auto discount = order.getDiscountAmount();
     const auto finalTotal = order.getFinalTotal();
 
-    std::cout << std::string(88, '=') << '\n'
+    std::cout << std::string(146, '=') << '\n'
               << "Order ID: " << order.getId() << '\n'
               << "Customer ID: " << order.getCustomerId() << '\n';
 
-    std::cout << "Status: ";
-    switch (order.getOrderStatus()) {
-        case OrderStatus::Draft: std::cout << "Draft"; break;
-        case OrderStatus::Confirmed: std::cout << "Confirmed"; break;
-        case OrderStatus::Completed: std::cout << "Completed"; break;
-        case OrderStatus::Cancelled: std::cout << "Cancelled"; break;
-    }
-    std::cout << '\n' << std::string(88, '-') << '\n';
+    std::cout << "Status: " << getOrderStatusName(order.getOrderStatus());
+    std::cout << "\nAmounts in rials.\n" << std::string(146, '-') << '\n';
 
     if (order.getItems().empty()) {
         std::cout << "No items in this order.\n";
@@ -567,8 +577,11 @@ void displayOrder(const Order& order) {
                   << std::setw(25) << "Name"
                   << std::setw(22) << "Unit Price"
                   << std::setw(11) << "Quantity"
-                  << std::setw(22) << "Line Subtotal" << '\n';
-        std::cout << std::string(88, '-') << '\n';
+                  << std::setw(22) << "Line Subtotal"
+                  << std::setw(14) << "Discount (%)"
+                  << std::setw(22) << "Discount Amount"
+                  << std::setw(22) << "Line Final Total" << '\n';
+        std::cout << std::string(146, '-') << '\n';
 
         for (const auto& item : order.getItems()) {
             std::cout << std::left
@@ -576,15 +589,18 @@ void displayOrder(const Order& order) {
                       << std::setw(25) << item.getProductName()
                       << std::setw(22) << item.getProductUnitPrice()
                       << std::setw(11) << item.getOrderQuantity()
-                      << std::setw(22) << item.getTotalPrice() << '\n';
+                      << std::setw(22) << item.getTotalPrice()
+                      << std::setw(14) << item.getDiscount()
+                      << std::setw(22) << item.getDiscountAmount()
+                      << std::setw(22) << item.getFinalTotal() << '\n';
         }
     }
 
-    std::cout << std::string(88, '-') << '\n'
+    std::cout << std::string(146, '-') << '\n'
               << std::left << std::setw(22) << "Subtotal:" << subtotal << '\n'
               << std::setw(22) << "Discount:" << discount << '\n'
               << std::setw(22) << "Final total:" << finalTotal << '\n'
-              << std::string(88, '=') << "\n\n";
+              << std::string(146, '=') << "\n\n";
 }
 
 void menuRegisterCustomer(std::vector<Customer> &customersList) {
@@ -708,7 +724,10 @@ void showOrderOperationsMenu(std::vector<Order> &ordersList, std::vector<Custome
             << "5. Confirm order\n"
             << "6. Cancel order\n"
             << "7. Complete order\n"
-            << "8. Return to main menu\n";
+            << "8. List all orders\n"
+            << "9. Customer order history\n"
+            << "10. Sales summary\n"
+            << "11. Return to main menu\n";
 
         int choice = readMenuOption();
 
@@ -733,6 +752,15 @@ void showOrderOperationsMenu(std::vector<Order> &ordersList, std::vector<Custome
                 break;
             case OrdersOperationsMenuOptions::CompleteOrder:
                 ordersMenuCompleteOrder(ordersList);
+                break;
+            case OrdersOperationsMenuOptions::ListOrders:
+                ordersMenuListOrders(ordersList);
+                break;
+            case OrdersOperationsMenuOptions::CustomerHistory:
+                ordersMenuCustomerHistory(ordersList, customers);
+                break;
+            case OrdersOperationsMenuOptions::SalesSummary:
+                ordersMenuSalesSummary(ordersList);
                 break;
             case OrdersOperationsMenuOptions::ReturnToMainMenu:
                 return;
@@ -931,5 +959,120 @@ void ordersMenuAddItem(std::vector<Order> &orders, std::vector<Product> &product
     }
     catch (const std::overflow_error &e) {
         std::cerr << "Cannot add item to order: " << e.what() << "\n";
+    }
+}
+
+std::string getOrderStatusName(OrderStatus status) {
+    switch (status) {
+        case OrderStatus::Draft: return "Draft";
+        case OrderStatus::Confirmed: return "Confirmed";
+        case OrderStatus::Completed: return "Completed";
+        case OrderStatus::Cancelled: return "Cancelled";
+    }
+    return "Unknown";
+}
+
+void displayOrders(const std::vector<const Order*>& orders) {
+    if (orders.empty()) {
+        std::cout << "No orders found.\n";
+        return;
+    }
+
+    // Prepare the report before printing so overflow cannot leave a partial table.
+    std::ostringstream report;
+    report << "Amounts in rials.\n"
+           << std::left
+           << std::setw(12) << "Order ID"
+           << std::setw(14) << "Customer ID"
+           << std::setw(14) << "Status"
+           << std::setw(22) << "Subtotal"
+           << std::setw(22) << "Discount"
+           << std::setw(22) << "Final Total" << '\n'
+           << std::string(106, '-') << '\n';
+    for (const auto* order : orders) {
+        report << std::left
+               << std::setw(12) << order->getId()
+               << std::setw(14) << order->getCustomerId()
+               << std::setw(14) << getOrderStatusName(order->getOrderStatus())
+               << std::setw(22) << order->getSubTotal()
+               << std::setw(22) << order->getDiscountAmount()
+               << std::setw(22) << order->getFinalTotal() << '\n';
+    }
+    report << std::string(106, '-') << "\n\n";
+    std::cout << report.str();
+}
+
+void ordersMenuListOrders(const std::vector<Order>& orders) {
+    std::vector<const Order*> ordersToDisplay;
+    for (const auto& order : orders) {
+        ordersToDisplay.push_back(&order);
+    }
+    try {
+        displayOrders(ordersToDisplay);
+    }
+    catch (const std::overflow_error& e) {
+        std::cerr << "Cannot display orders: " << e.what() << '\n';
+    }
+}
+
+void ordersMenuCustomerHistory(const std::vector<Order>& orders, std::vector<Customer>& customers) {
+    std::string customerId;
+    std::cout << "Enter the customer ID: ";
+    if (!std::getline(std::cin, customerId)) {
+        std::cerr << "Customer history cancelled: input unavailable.\n";
+        return;
+    }
+    const Customer* customer = getCustomerById(customers, customerId);
+    if (!customer) {
+        std::cout << "No customer found with ID: " << customerId << '\n';
+        return;
+    }
+    const auto customerOrders = getCustomerOrders(orders, customerId);
+    if (customerOrders.empty()) {
+        std::cout << "No orders found for customer " << customerId << ".\n";
+        return;
+    }
+    try {
+        displayOrders(customerOrders);
+    }
+    catch (const std::overflow_error& e) {
+        std::cerr << "Cannot display customer history: " << e.what() << '\n';
+    }
+}
+
+void ordersMenuSalesSummary(const std::vector<Order>& orders) {
+    try {
+        const auto summary = getSalesSummary(orders);
+        std::cout << std::string(45, '=') << '\n'
+                  << "Sales Summary (rials)\n"
+                  << std::string(45, '-') << '\n'
+                  << std::left << std::setw(22) << "Completed orders:" << summary.completedOrders << '\n'
+                  << std::setw(22) << "Subtotal:" << summary.subtotal << '\n'
+                  << std::setw(22) << "Discount:" << summary.discount << '\n'
+                  << std::setw(22) << "Final revenue:" << summary.revenue << '\n';
+        if (summary.completedOrders == 0) {
+            std::cout << "No completed sales yet.\n";
+        }
+        std::cout << std::string(45, '=') << "\n\n";
+    }
+    catch (const std::overflow_error& e) {
+        std::cerr << "Cannot display sales summary: " << e.what() << '\n';
+    }
+}
+
+void menuSetProductDiscount(Product &prodToEdit) {
+    int discount{0};
+    if (!readInt("Please enter a discount percentage ranging from 0 to 100: ", discount)) {
+        std::cerr << "Discount update cancelled: input unavailable.\n";
+        return;
+    }
+
+    try {
+        prodToEdit.setDiscount(discount);
+        std::cout << "Discount of product " << prodToEdit.getProductName() << " set to " << prodToEdit.getDiscount()
+            << "%\n";
+    }
+    catch (const std::invalid_argument &e) {
+        std::cerr << "Cannot set discount " << e.what() << "\n";
     }
 }

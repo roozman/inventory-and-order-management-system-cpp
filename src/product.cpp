@@ -10,7 +10,8 @@ Product::Product(std::string sku,
                  const int stockQuantity,
                  const int reorderLevel
 )
-    : sku_{sku}, productName_{productName}, unitPrice_{unitPrice}, stockQuantity_{stockQuantity}, reorderLevel_{reorderLevel}, archived_{false} {
+    : sku_{sku}, productName_{productName}, unitPrice_{unitPrice}, stockQuantity_{stockQuantity},
+    reorderLevel_{reorderLevel}, archived_{false}, discount_{0}{
     // Validate even if the SKU normally comes from generateSKU: Product can be constructed directly.
     if (sku.size() != 4 || sku[0] != 'P'
         || sku == "P000" || sku.substr(1).find_first_not_of("0123456789ABCDEF") != std::string::npos) {
@@ -134,4 +135,16 @@ void Product::restoreStock(int amount) {
         throw std::overflow_error("Stock quantity overflow.");
     }
     stockQuantity_ += amount;
+}
+
+int Product::getDiscount() const {
+    return discount_;
+}
+
+void Product::setDiscount(int discount) {
+    this->ensureActive();
+    if (discount > 100 || discount < 0) {
+        throw std::invalid_argument("Discount percentage must be between 0 and 100.");
+    }
+    discount_ = discount;
 }

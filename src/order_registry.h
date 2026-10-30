@@ -35,4 +35,17 @@ void cancelConfirmedOrder(std::vector<Order>& ordersList, const std::string& ord
 
 void completeOrder(std::vector<Order>& ordersList, const std::string& orderId);
 
+// Returned pointers are read-only views; changing the orders vector may invalidate them.
+std::vector<const Order*> getCustomerOrders(const std::vector<Order>& ordersList, const std::string& customerId);
+
+struct SalesSummary {
+    std::size_t completedOrders{0};
+    std::int64_t subtotal{0};
+    std::int64_t discount{0};
+    std::int64_t revenue{0};
+};
+
+// Only Completed orders count as sales. Throws std::overflow_error if any sum overflows.
+SalesSummary getSalesSummary(const std::vector<Order>& ordersList);
+
 #endif //STORE_ORDER_REGISTRY_H
