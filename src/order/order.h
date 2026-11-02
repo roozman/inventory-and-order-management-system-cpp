@@ -3,8 +3,8 @@
 
 #include <string>
 #include <vector>
-#include "order_item.h"
-#include "customer.h"
+#include "../order/order_item.h"
+#include "../customer/customer.h"
 
 enum class OrderStatus {
     Draft,

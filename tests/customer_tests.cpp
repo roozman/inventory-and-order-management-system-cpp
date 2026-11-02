@@ -1,5 +1,5 @@
-#include "../src/customer.h"
-#include "../src/customer_registry.h"
+#include "../src/customer/customer.h"
+#include "../src//customer/customer_registry.h"
 
 #include <cstdint>
 #include <exception>

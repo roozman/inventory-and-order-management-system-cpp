@@ -2,7 +2,7 @@
 
 #include <limits>
 
-#include "customer_registry.h"
+#include "../customer/customer_registry.h"
 #include <stdexcept>
 #include "order_registry.h"
 

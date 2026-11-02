@@ -1,6 +1,6 @@
-#include "../src/order.h"
-#include "../src/order_item.h"
-#include "../src/order_registry.h"
+#include "../src/order/order.h"
+#include "../src/order/order_item.h"
+#include "../src/order/order_registry.h"
 
 #include <exception>
 #include <iostream>

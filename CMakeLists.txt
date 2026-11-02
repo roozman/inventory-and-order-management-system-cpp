@@ -6,48 +6,48 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 add_executable(store src/main.cpp
-        src/product.h
-        src/product.cpp
-        src/inventory.h
-        src/inventory.cpp
-        src/customer.h
-        src/customer.cpp
-        src/customer_registry.cpp
-        src/customer_registry.h
-        src/order_item.h
-        src/order_item.cpp
-        src/order.h
-        src/order.cpp
-        src/order_registry.h
-        src/order_registry.cpp
+        src/product/product.h
+        src/product/product.cpp
+        src/product/inventory.h
+        src/product/inventory.cpp
+        src/customer/customer.h
+        src/customer/customer.cpp
+        src/customer/customer_registry.cpp
+        src/customer/customer_registry.h
+        src/order/order_item.h
+        src/order/order_item.cpp
+        src/order/order.h
+        src/order/order.cpp
+        src/order/order_registry.h
+        src/order/order_registry.cpp
 )
 
 add_executable(product_tests
     tests/product_tests.cpp
-        src/product.cpp
+        src/product/product.cpp
 )
 
 add_executable(inventory_tests
     tests/inventory_tests.cpp
-        src/inventory.cpp
-        src/product.cpp
+        src/product/inventory.cpp
+        src/product/product.cpp
 )
 
 add_executable(customer_tests
     tests/customer_tests.cpp
-    src/customer.cpp
-    src/customer_registry.cpp
+        src/customer/customer.cpp
+        src/customer/customer_registry.cpp
 )
 
 add_executable(order_tests
     tests/order_tests.cpp
-    src/order.cpp
-    src/order_registry.cpp
-    src/customer.cpp
-    src/customer_registry.cpp
-    src/product.cpp
-    src/order_item.cpp
-    src/inventory.cpp
+        src/order/order.cpp
+        src/order/order_registry.cpp
+        src/customer/customer.cpp
+        src/customer/customer_registry.cpp
+        src/product/product.cpp
+        src/order/order_item.cpp
+        src/product/inventory.cpp
 )
 
 target_compile_options(store PRIVATE

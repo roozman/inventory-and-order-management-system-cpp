@@ -1,4 +1,4 @@
-#include "../src/product.h"
+#include "../src/product/product.h"
 #include <iostream>
 #include <string>
 #include <stdexcept>

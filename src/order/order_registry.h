@@ -3,8 +3,8 @@
 
 #include "order.h"
 #include <vector>
-#include "customer.h"
-#include "inventory.h"
+#include "../customer/customer.h"
+#include "../product/inventory.h"
 #include <string>
 
 // Requires an existing customer. Generates a new ID and leaves orders unchanged

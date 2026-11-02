@@ -1,8 +1,8 @@
-#include "product.h"
-#include "inventory.h"
-#include "customer.h"
-#include "order.h"
-#include "order_registry.h"
+#include "product/product.h"
+#include "product/inventory.h"
+#include "customer/customer.h"
+#include "order/order.h"
+#include "order/order_registry.h"
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
@@ -12,7 +12,7 @@
 #include <array>
 #include <random>
 
-#include "customer_registry.h"
+#include "customer/customer_registry.h"
 
 enum class MainMenuOptions {
     AddProduct = 1,

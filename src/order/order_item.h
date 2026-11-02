@@ -4,7 +4,7 @@
 #include <cstdint>
 #include <string>
 
-#include "product.h"
+#include "../product/product.h"
 
 class OrderItem {
 private:
