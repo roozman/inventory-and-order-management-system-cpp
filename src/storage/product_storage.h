@@ -15,4 +15,6 @@ std::string escapeCsvField(const std::string& text);
 
 void recoverProductSave(const std::string& filePath);
 
+bool readCsvRecord(std::istream& input, std::vector<std::string>& fields);
+
 #endif //STORE_PRODUCT_STORAGE_H

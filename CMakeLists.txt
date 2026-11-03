@@ -70,6 +70,15 @@ target_compile_options(order_tests PRIVATE
 )
 
 enable_testing()
+add_executable(product_storage_tests
+    tests/product_storage_tests.cpp
+    src/storage/product_storage.cpp
+    src/product/product.cpp
+)
+target_compile_options(product_storage_tests PRIVATE -Wall -Wextra -Wpedantic)
+foreach(storage_case round_trip repeated invalid line_endings recovery recovery_failure missing)
+    add_test(NAME product_storage_${storage_case} COMMAND product_storage_tests ${storage_case})
+endforeach()
 add_test(NAME order_history_empty COMMAND order_tests history_empty)
 add_test(NAME order_history_missing COMMAND order_tests history_missing)
 add_test(NAME order_history_filtered COMMAND order_tests history_filtered)
