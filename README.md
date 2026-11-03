@@ -1,63 +1,40 @@
 # Inventory and Order Management System
 
-A C++17 console application for managing a small store's products, stock, customers, and sales orders. The goal is to track inventory accurately, process orders without inconsistent stock changes, preserve historical prices and discounts, and save data between sessions.
+A C++17 console application for managing products, inventory, customers, and orders, with CSV persistence and automated tests.
 
-This is a learning project focused on object-oriented design, standard-library containers, input validation, error handling, file persistence, and automated testing with CMake/CTest. Monetary values use integer rials.
+- Manage stock, archive products, and apply product discounts.
+- Create, confirm, cancel, and complete orders.
+- Preserve historical item names, prices, and discounts.
+- View low-stock products, customer history, and completed-sales reports.
 
-## Current Status
+Money uses integer rials. Discounts range from 0–100% and round down per line. Confirmation deducts stock; cancelling a confirmed order restores it once. Only completed orders count as sales.
 
-The project is under development. Product, inventory, customer, and order operations are available through the console. Orders support Draft creation, item editing, confirmation, cancellation, and completion, with stock updates and historical product names, prices, and discounts.
+## Build and test
 
-Product discounts range from 0% to 100%, with each line discount rounded down to whole rials. Reports include individual order details, all orders, customer history, and Completed-order sales totals. Monetary calculations check for overflow. Data exists only in memory and is lost when the application exits.
+Requires CMake 4.3+, a C++17 compiler, and a compatible build tool. Tested with MinGW on Windows; Linux execution has not yet been verified.
 
-Section 9 is complete through task 44. Next is section 10: designing the file format and implementing persistence.
+```sh
+cmake -S . -B build
+cmake --build build
+ctest --test-dir build --output-on-failure
+```
 
-## Progress Checklist
+Run `./build/store` on Linux or `.\build\store.exe` in PowerShell. With a multi-configuration generator, build with `--config Debug`, test with `-C Debug`, and use the executable in `build/Debug/`.
 
-### Implemented
+## Usage and sample data
 
-- [x] C++17 project structure with separate headers and source files and a CMake build.
-- [x] Console menus for product registration, listing, and product operations.
-- [x] Store multiple products in memory.
-- [x] Generate unique SKUs automatically and reject duplicate SKUs.
-- [x] Find products by SKU.
-- [x] Validate product names, prices, stock quantities, and reorder levels.
-- [x] Edit product names, unit prices, and reorder levels.
-- [x] Increase and decrease stock with checks against overflow and insufficient stock.
-- [x] Display active products whose stock is at or below their reorder level.
-- [x] Archive products, retain their SKUs, and prevent further product edits or manual stock changes.
-- [x] Validate numeric product input and report operation errors through the console.
-- [x] Register and list customers, generate unique customer IDs, and find customers by ID through the console.
-- [x] Create Draft orders for existing customers with generated unique order IDs through core functions.
-- [x] Add existing products with positive quantities and remove items through core functions, without changing stock; reject repeated SKUs within an order.
-- [x] Preserve historical product names and base prices in order items.
-- [x] Calculate line and order subtotals, discounts, and final totals with rounding and overflow checks, including zero totals for an empty Draft.
-- [x] Find an order by ID through the console and display its customer ID, status, historical item details, and totals.
-- [x] Provide automated product, inventory, customer, order-transition, discount, history, and sales-summary tests registered with CTest. The last full run passed all 194 tests.
+Run from the repository root to keep saves in its `data/` directory. Main menu options **9**, **10**, and **11** save, load, and save-and-exit. Loading asks before replacing unsaved changes.
 
-- [x] Connect Draft creation and item addition/removal to the console menu.
-- [x] Set and clear product discounts from 0% to 100%, applied equally to all customers.
-- [x] Preserve discount percentages and discounted amounts in historical item snapshots.
-- [x] Confirm orders only when every item has sufficient stock, reducing stock exactly once without partial changes.
-- [x] Cancel draft orders without changing stock and restore confirmed-order stock exactly once on cancellation.
-- [x] Complete confirmed orders and enforce all permitted order-state transitions.
-- [x] Coordinate product archiving with open orders and stock restoration.
-- [x] List all orders and display a selected customer's order history.
-- [x] Report Completed-order counts, gross subtotals, total discounts, and net sales revenue.
+Sample data is included in `data/` and loads automatically when you run from the repository root. No file copying is needed. It contains five products, three customers, and five orders across all statuses. The initial sales summary shows one completed order and **36000 rials** in revenue. Saving updates these files, so your demo changes will appear in Git.
 
-### Yet to Be Implemented
+## Persistence
 
-- [ ] Save and load products, customers, orders, and historical amounts using a documented text format.
-- [ ] Handle malformed files and save/load failures without silently losing valid data.
-- [ ] Expand automated tests to cover persistence.
-- [ ] Provide loadable sample data files, build/run/test instructions, and a complete console workflow demonstration.
+`products.csv`, `customers.csv`, `orders.csv`, and `order_items.csv` form one dataset. Headers define the fields; IDs connect records. Names use CSV quoting, and order items retain historical values.
 
-## Temporary Startup Data
+Startup begins with an empty store only when the entire dataset is absent. Invalid or incomplete datasets are rejected without replacing live data. Saves use staging files and a pending marker to retry failed copies. Keep these recovery files intact. The application supports one writer at a time; saving is not guaranteed against power loss.
 
-The orders submenu includes option 8 to list all orders, option 9 for customer history, and option 10 for the sales summary. Option 2 displays a single order's item details; option 11 returns to the main menu.
+## Structure
 
-`createTestingData()` currently generates five products, five customers, and two Draft orders at every launch. Each order contains two products; adding these Draft items does not reserve or reduce stock. This is temporary in-memory demonstration data, not saved data.
+`src/product/`, `src/customer/`, and `src/order/` contain business logic; `src/storage/` handles persistence; `src/main.cpp` contains the console interface. Tests are in `tests/`.
 
-## Future Direction
-
-A Qt desktop interface will be added after the console version is complete and tested, reusing its business logic and persistence functionality.
+A Qt interface is planned, reusing the existing business logic and storage.

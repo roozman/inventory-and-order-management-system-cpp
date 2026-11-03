@@ -22,6 +22,12 @@ add_executable(store src/main.cpp
         src/order/order_registry.cpp
         src/storage/product_storage.h
         src/storage/product_storage.cpp
+        src/storage/csv_helpers.cpp
+        src/storage/csv_helpers.h
+        src/storage/storage_helpers.cpp
+        src/storage/customer_storage.cpp
+        src/storage/order_storage.cpp
+        src/storage/store_storage.cpp
 )
 
 add_executable(product_tests
@@ -70,9 +76,30 @@ target_compile_options(order_tests PRIVATE
 )
 
 enable_testing()
+add_executable(store_storage_tests
+    tests/store_storage_tests.cpp
+    src/storage/store_storage.cpp
+    src/storage/customer_storage.cpp
+    src/storage/order_storage.cpp
+    src/storage/product_storage.cpp
+    src/storage/storage_helpers.cpp
+    src/storage/csv_helpers.cpp
+    src/product/product.cpp
+    src/product/inventory.cpp
+    src/customer/customer.cpp
+    src/customer/customer_registry.cpp
+    src/order/order.cpp
+    src/order/order_item.cpp
+    src/order/order_registry.cpp
+)
+target_compile_options(store_storage_tests PRIVATE -Wall -Wextra -Wpedantic)
+foreach(storage_case reopen customers invalid_orders invalid_items recovery failed_save missing)
+    add_test(NAME store_storage_${storage_case} COMMAND store_storage_tests ${storage_case})
+endforeach()
 add_executable(product_storage_tests
     tests/product_storage_tests.cpp
     src/storage/product_storage.cpp
+    src/storage/csv_helpers.cpp
     src/product/product.cpp
 )
 target_compile_options(product_storage_tests PRIVATE -Wall -Wextra -Wpedantic)
@@ -104,6 +131,7 @@ add_test(NAME order_discount_zero_price COMMAND order_tests discount_zero_price)
 add_test(NAME order_discount_large COMMAND order_tests discount_large)
 add_test(NAME order_discount_max_full COMMAND order_tests discount_max_full)
 add_test(NAME order_discount_snapshot COMMAND order_tests discount_snapshot)
+add_test(NAME order_discount_same_customers COMMAND order_tests discount_same_customers)
 add_test(NAME order_discount_mixed_totals COMMAND order_tests discount_mixed_totals)
 add_test(NAME order_discount_line_rounding COMMAND order_tests discount_line_rounding)
 add_test(NAME order_discount_total_overflow COMMAND order_tests discount_total_overflow)

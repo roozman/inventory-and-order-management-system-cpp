@@ -822,6 +822,35 @@ std::string testItemDiscount(std::int64_t price, int quantity, int percentage,
         ? "" : "Item gross, captured percentage, discount, or final total is incorrect.";
 }
 
+std::string testDiscountSameForCustomers() {
+    std::vector<Customer> customers{{"C001", "Alice"}, {"C002", "Bob"}};
+    std::vector<Product> products{{"P001", "Notebook", 101, 10, 1}};
+    std::vector<Order> orders;
+    products[0].setDiscount(10);
+
+    for (const auto& customer : customers) {
+        addDraftOrder(customers, orders, customer.getId());
+        addItemToOrder(orders, products, orders.back().getId(), "P001", 3);
+    }
+
+    if (orders.size() != 2 || orders[0].getCustomerId() != "C001" ||
+        orders[1].getCustomerId() != "C002") {
+        return "Expected separate orders for two different customers.";
+    }
+    for (const auto& order : orders) {
+        if (order.getItems().size() != 1) return "Expected one item per customer order.";
+        const auto& item = order.getItems()[0];
+        // Check known amounts, not just equality: two incorrect results could match.
+        if (item.getDiscount() != 10 || item.getTotalPrice() != 303 ||
+            item.getDiscountAmount() != 30 || item.getFinalTotal() != 273 ||
+            order.getSubTotal() != 303 || order.getDiscountAmount() != 30 ||
+            order.getFinalTotal() != 273) {
+            return "Identical product settings and quantities must give both customers the same discount and total.";
+        }
+    }
+    return {};
+}
+
 std::string testDiscountSnapshot() {
     std::vector<Product> products{{"P001", "Notebook", 101, 10, 1}};
     products[0].setDiscount(10);
@@ -1093,6 +1122,7 @@ int main(int argc, char* argv[]) {
         else if (name == "discount_large") error = testItemDiscount(std::numeric_limits<std::int64_t>::max(), 1, 99, std::numeric_limits<std::int64_t>::max(), 9131138316486228048LL, 92233720368547759LL);
         else if (name == "discount_max_full") error = testItemDiscount(std::numeric_limits<std::int64_t>::max(), 1, 100, std::numeric_limits<std::int64_t>::max(), std::numeric_limits<std::int64_t>::max(), 0);
         else if (name == "discount_snapshot") error = testDiscountSnapshot();
+        else if (name == "discount_same_customers") error = testDiscountSameForCustomers();
         else if (name == "discount_mixed_totals") error = testMixedDiscountTotals();
         else if (name == "discount_line_rounding") error = testDiscountLineRounding();
         else if (name == "discount_total_overflow") error = testDiscountTotalOverflow();

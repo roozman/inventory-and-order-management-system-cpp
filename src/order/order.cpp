@@ -16,6 +16,25 @@ Order::Order(std::string orderId, std::string customerId)
     }
 }
 
+Order Order::restore(const std::string& id, const std::string& customerId,
+                     OrderStatus status, const std::vector<OrderItem>& items) {
+    Order order{id, customerId};
+    const Customer validatedCustomer{customerId, "Restored customer"};
+    if (status != OrderStatus::Draft && status != OrderStatus::Confirmed &&
+        status != OrderStatus::Completed && status != OrderStatus::Cancelled)
+        throw std::invalid_argument("Invalid restored status.");
+    if (items.empty() && (status == OrderStatus::Confirmed || status == OrderStatus::Completed))
+        throw std::invalid_argument("Finalized orders require items.");
+    for (std::size_t i = 0; i < items.size(); ++i)
+        for (std::size_t j = 0; j < i; ++j)
+            if (items[i].getProductSKU() == items[j].getProductSKU())
+                throw std::invalid_argument("Duplicate restored SKU.");
+    order.orderItems_ = items;
+    order.getFinalTotal();
+    order.orderStatus_ = status;
+    return order;
+}
+
 std::string Order::getId() const {
     return orderId_;
 }

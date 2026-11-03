@@ -1,0 +1,6 @@
+order_id,sku,product_name,unit_price,quantity,discount_percent,subtotal,discount_amount,final_total
+O000001,P001,"Notebook, blue (small)",101,3,10,303,30,273
+O000001,P002,"12"" ruler",5000,2,0,10000,0,10000
+O000002,P003,"Desk lamp",5000,2,20,10000,2000,8000
+O000003,P001,"Notebook, blue",20000,2,10,40000,4000,36000
+O000004,P002,"12"" ruler",5000,1,0,5000,0,5000

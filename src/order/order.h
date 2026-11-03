@@ -24,6 +24,9 @@ public:
     // Requires O000001 through O999999; rejects invalid IDs with std::invalid_argument.
     // Customer existence is checked by addDraftOrder, not by this constructor.
     Order(std::string orderId, std::string customerId);
+    // Restore historical state without changing inventory.
+    static Order restore(const std::string& id, const std::string& customerId,
+                         OrderStatus status, const std::vector<OrderItem>& items);
     std::string getId() const;
     OrderStatus getOrderStatus() const;
     std::string getCustomerId() const;

@@ -1,0 +1,6 @@
+order_id,customer_id,status,item_count,subtotal,discount_amount,final_total
+O000001,C001,Draft,2,10303,30,10273
+O000002,C002,Confirmed,1,10000,2000,8000
+O000003,C001,Completed,1,40000,4000,36000
+O000004,C002,Cancelled,1,5000,0,5000
+O000005,C003,Draft,0,0,0,0

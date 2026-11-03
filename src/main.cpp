@@ -3,14 +3,12 @@
 #include "customer/customer.h"
 #include "order/order.h"
 #include "order/order_registry.h"
+#include "storage/store_storage.h"
 #include <iostream>
 #include <stdexcept>
 #include <sstream>
 #include <limits>
 #include <iomanip>
-#include <algorithm>
-#include <array>
-#include <random>
 
 #include "customer/customer_registry.h"
 
@@ -23,7 +21,9 @@ enum class MainMenuOptions {
     ListCustomers = 6,
     FindCustomerById = 7,
     OpenOrderMenu = 8,
-    Exit = 9
+    SaveData = 9,
+    LoadData = 10,
+    Exit = 11
 };
 
 enum class ProductOperationsMenuOptions {
@@ -87,20 +87,30 @@ bool readInt64(const std::string& prompt, std::int64_t& value);
 bool readInt(const std::string& prompt, int& value);
 int readMenuOption();
 
-// Temporary function for testing purposes. Will be removed later.
-void createTestingData(std::vector<Product>& prodList, std::vector<Customer>& customerList,
-                       std::vector<Order>& ordersList);
-
 int main() {
-    std::vector<Product> productsList;
-    std::vector<Customer> customersList;
-    std::vector<Order> ordersList;
-    createTestingData(productsList, customersList, ordersList);
+    const std::string dataDirectory{"data"};
+    StoreData data;
+    while (true) {
+        try {
+            data = loadStore(dataDirectory, true);
+            break;
+        }
+        catch (const std::exception& error) {
+            std::cerr << "Cannot load saved data: " << error.what() << '\n';
+            std::cout << "Fix the files and enter R to retry, or press Enter to exit without saving: ";
+            std::string answer;
+            if (!std::getline(std::cin, answer) || (answer != "R" && answer != "r")) return 1;
+        }
+    }
+    auto& productsList = data.products;
+    auto& customersList = data.customers;
+    auto& ordersList = data.orders;
 
     int choice{0};
     while (true) {
         showMenu();
         choice = readMenuOption();
+        if (std::cin.eof()) choice = static_cast<int>(MainMenuOptions::Exit);
 
         switch (static_cast<MainMenuOptions>(choice)) {
             case MainMenuOptions::AddProduct:
@@ -129,8 +139,35 @@ int main() {
             case MainMenuOptions::OpenOrderMenu:
                 showOrderOperationsMenu(ordersList, customersList, productsList);
                 break;
+            case MainMenuOptions::SaveData:
             case MainMenuOptions::Exit:
-                return 0;
+                try {
+                    saveStore(data, dataDirectory);
+                    std::cout << "Data saved successfully.\n";
+                    if (choice == static_cast<int>(MainMenuOptions::Exit)) return 0;
+                }
+                catch (const std::exception& error) {
+                    std::cerr << "Cannot save data: " << error.what()
+                              << "\nData remains in memory. Fix the problem and retry saving.\n";
+                    if (std::cin.eof()) return 1;
+                }
+                break;
+            case MainMenuOptions::LoadData: {
+                std::cout << "Loading replaces unsaved changes. Enter YES to continue: ";
+                std::string answer;
+                if (!std::getline(std::cin, answer) || answer != "YES") break;
+                try {
+                    auto loaded = loadStore(dataDirectory);
+                    data.products.swap(loaded.products);
+                    data.customers.swap(loaded.customers);
+                    data.orders.swap(loaded.orders);
+                    std::cout << "Data loaded successfully.\n";
+                }
+                catch (const std::exception& error) {
+                    std::cerr << "Cannot load data: " << error.what() << "\nCurrent data is unchanged.\n";
+                }
+                break;
+            }
             default:
                 std::cout << "Invalid option.\n";
                 break;
@@ -138,49 +175,16 @@ int main() {
         std::cout << "\nPress Enter to return to the main menu...";
 
         if (std::string input; !std::getline(std::cin, input)) {
-            break;
+            try {
+                saveStore(data, dataDirectory);
+                return 0;
+            }
+            catch (const std::exception& error) {
+                std::cerr << "Cannot save data before exit: " << error.what() << '\n';
+                return 1;
+            }
         }
     }
-}
-
-void createTestingData(std::vector<Product> &prodList, std::vector<Customer> &customerList,
-                       std::vector<Order>& ordersList) {
-    // A fixed seed makes a failed manual run reproducible.
-    std::mt19937 generator{0xC0FFEEu};
-    std::array<std::string, 5> productNames{
-        "Notebook", "Desk Lamp", "Keyboard", "Water Bottle", "Backpack"
-    };
-    std::array<std::string, 5> customerNames{
-        "Alice Smith", "Bob Jones", "Carol Lee", "David Kim", "Emma Brown"
-    };
-    std::shuffle(productNames.begin(), productNames.end(), generator);
-    std::shuffle(customerNames.begin(), customerNames.end(), generator);
-
-    std::uniform_int_distribution<int> priceDistribution{1000, 50000};
-    std::uniform_int_distribution<int> stockDistribution{0, 30};
-    std::uniform_int_distribution<int> reorderDistribution{0, 10};
-
-    for (const auto& name : productNames) {
-        const auto sku = generateSKU(findNextID(prodList));
-        addProduct(prodList, Product{sku, name, priceDistribution(generator),
-                                     stockDistribution(generator), reorderDistribution(generator)});
-    }
-
-    for (const auto& name : customerNames) {
-        const auto id = generateCustomerId(findNextCustomerId(customerList));
-        addCustomer(customerList, Customer{id, name});
-    }
-
-    // Draft items capture current product prices without changing stock.
-    addDraftOrder(customerList, ordersList, customerList.at(0).getId());
-    const auto firstOrderId = ordersList.back().getId();
-    addItemToOrder(ordersList, prodList, firstOrderId, prodList.at(0).getSku(), 2);
-    addItemToOrder(ordersList, prodList, firstOrderId, prodList.at(1).getSku(), 3);
-
-    addDraftOrder(customerList, ordersList, customerList.at(1).getId());
-    const auto secondOrderId = ordersList.back().getId();
-    addItemToOrder(ordersList, prodList, secondOrderId, prodList.at(2).getSku(), 1);
-    addItemToOrder(ordersList, prodList, secondOrderId, prodList.at(4).getSku(), 2);
 }
 
 int readMenuOption() {
@@ -220,7 +224,9 @@ void showMenu() {
     << "6. List customers\n"
     << "7. Find customer by ID\n\n"
     << "8. Show order menu\n"
-    << "9. Exit\n";
+    << "9. Save data\n"
+    << "10. Load data\n"
+    << "11. Save and exit\n";
 }
 
 void showProductOperationsMenu(std::vector<Product> &prodList) {

@@ -5,5 +5,11 @@
 /.idea/
 
 /md/
+/data/*
+!/data/products.csv
+!/data/customers.csv
+!/data/orders.csv
+!/data/order_items.csv
 
-/examples/
+/examples/*
+!/examples/csv/
