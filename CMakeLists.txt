@@ -20,6 +20,8 @@ add_executable(store src/main.cpp
         src/order/order.cpp
         src/order/order_registry.h
         src/order/order_registry.cpp
+        src/storage/product_storage.h
+        src/storage/product_storage.cpp
 )
 
 add_executable(product_tests
